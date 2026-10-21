@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../lib/app-context'
 import { AppIcon } from './AppIcon'
 import { Search } from './icons'
+import { useOverlayScrollLock } from './ui'
 import { searchApps, intentHints } from '../lib/experience'
 
 export function Palette({ onClose }: { onClose: () => void }) {
+  useOverlayScrollLock()
   const { allTiles, open, setSheet } = useApp()
   const [q, setQ] = useState('')
   const [i, setI] = useState(0)
@@ -12,7 +14,7 @@ export function Palette({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDivElement>(null)
   const previousFocus = useRef(document.activeElement as HTMLElement | null)
   useEffect(() => {
-    ref.current?.focus()
+    ref.current?.focus({ preventScroll: true })
     const trap = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return
       const items = [...(dialog.current?.querySelectorAll<HTMLElement>('input, button') || [])]
@@ -21,7 +23,7 @@ export function Palette({ onClose }: { onClose: () => void }) {
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
     }
     document.addEventListener('keydown', trap)
-    return () => { document.removeEventListener('keydown', trap); previousFocus.current?.focus() }
+    return () => { document.removeEventListener('keydown', trap); previousFocus.current?.focus({ preventScroll: true }) }
   }, [])
   const hits = useMemo(() => searchApps(allTiles, q), [q, allTiles])
   useEffect(() => { setI(0) }, [q])
