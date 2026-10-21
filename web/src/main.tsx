@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import './styles.css'
+import './experience.css'
 import { AppProvider, useApp } from './lib/app-context'
 import { Spinner } from './components/ui'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -28,6 +29,7 @@ function App() {
       <Route path="/setup" element={<Login mode="setup" />} />
       <Route element={<Gate><Layout /></Gate>}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/app/:key" element={null} />
         <Route path="/apps" element={<LibraryPage />} />
         <Route path="/activity" element={<ActivityPage />} />
         <Route path="/settings" element={<SettingsPage />} />

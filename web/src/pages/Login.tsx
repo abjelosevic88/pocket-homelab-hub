@@ -26,7 +26,7 @@ export default function Login({ mode }: { mode: 'login' | 'setup' }) {
   const sso = mode === 'login' && status?.oidc
   const pwAllowed = status?.password_login !== false
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }))
-  const wp = wallpaper('dusk')
+  const wp = wallpaper('midnight')
 
   return (
     <div className="desk login-desk" style={{ ['--accent' as string]: wp.accent }}>
@@ -35,9 +35,9 @@ export default function Login({ mode }: { mode: 'login' | 'setup' }) {
       <div className="center">
         <Glass className="login">
           <img src="/favicon.svg" alt="" width={72} height={72} className="login-logo" />
-          <h1>{status?.title || 'Pocket Hub'}</h1>
-          <p className="muted">{mode === 'setup' ? 'Create the first account. It owns this hub.' : 'Every app on your box, one tap away.'}</p>
-          {sso && <a className="btn primary lg block" href={`${V1}/auth/oidc/start?next=${encodeURIComponent(from)}`}>Sign in with {status?.oidc_name || 'Pocket Core'}</a>}
+          <h1>{'Pocket Box'}</h1>
+          <p className="muted">{mode === 'setup' ? 'Make yourself at home. Create your account.' : 'Your world. A little closer.'}</p>
+          {sso && <a className="btn primary lg block" href={`${V1}/auth/oidc/start?next=${encodeURIComponent(from)}`}>Welcome back. Sign in</a>}
           {sso && pwAllowed && !showPw && <button className="btn link" onClick={() => setShowPw(true)}>or use a password</button>}
           {(!sso || showPw) && pwAllowed && (
             <form onSubmit={submit} className="form">
@@ -47,7 +47,7 @@ export default function Login({ mode }: { mode: 'login' | 'setup' }) {
               <button className={`btn lg block ${sso ? '' : 'primary'}`} disabled={busy}>{busy ? 'Please wait…' : mode === 'setup' ? 'Create account' : 'Sign in'}</button>
             </form>
           )}
-          {!sso && !pwAllowed && <p className="callout">No way to sign in is configured. Set CORE_URL (Sign in with Pocket Core) or PASSWORD_LOGIN=true.</p>}
+          {!sso && !pwAllowed && <p className="callout">Your box is still being prepared. Contact the person who set it up to finish connecting your account.</p>}
           {err && <p className="callout">{err}</p>}
           {status?.version && <p className="muted small">v{status.version.replace(/^v/, '')}</p>}
         </Glass>

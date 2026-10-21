@@ -3,7 +3,7 @@
 </p>
 <h1 align="center">Pocket Hub</h1>
 <p align="center">
-  The home screen of a <b>Pocket Box</b>: every app a person may open, as a tile on a wallpaper, opened signed-in with one tap. Live health from the registry, an activity feed from the bus, a ⌘K launcher, a dock. Umbrel's desktop, for a box that already has <a href="https://github.com/abjelosevic88/pocket-homelab-core">Pocket Core</a>.<br>
+  The customer home and unified app workspace for a <b>Pocket Box</b>: personal spaces, a focus room, intent search, and apps that stay open as you move through your day. Connected to <a href="https://github.com/abjelosevic88/pocket-homelab-core">Pocket Core</a>.<br>
   <b>One binary · one SQLite file · one volume · nothing of its own to configure.</b>
 </p>
 <p align="center">
@@ -16,9 +16,11 @@
 
 A Pocket Box runs a dozen Pocket apps and a few dozen third-party services, and Pocket Core knows which of them each person in the household may use. The hub is the window on that: it has no app list of its own. A person signs in with Pocket Core, the hub reads *their* launcher from Core with *their* token, and draws it.
 
-- **A desktop.** Wallpaper, squircle icons, names, a status dot on every registered Pocket app, a dock with your favourites, widgets for what is up and what happened. Long-press or right-click a tile for details; *Edit layout* to drag tiles around. Everything per person: order, dock, hidden apps, wallpaper.
-- **Signed in with one tap.** Tiles for Pocket apps open the app's *Sign in with Pocket Core* entry, so the click lands you in the app as yourself, even on a browser that was someone else a minute ago. Third-party tiles open their address.
-- **A launcher.** ⌘K, type, enter. ⌘↵ for the app's page.
+- **A personal home.** Wallpaper, squircle icons, names, a status dot on every registered Pocket app, a dock with your favourites, an interactive app orbit and a brief from your connected apps. Long-press or right-click a tile for details; *Edit layout* to drag tiles around. Everything per person: order, dock, hidden apps, wallpaper.
+- **A unified workspace.** Apps open inside Hub with persistent navigation and an app switcher. Going Home or switching apps preserves open app state; closing a tab or reloading the browser ends that workspace. Tiles for Pocket apps open the app's *Sign in with Pocket Core* entry, so the click lands you in the app as yourself, even on a browser that was someone else a minute ago. Third-party apps need compatible embedding and sign-in settings; see the [customer experience and integration guide](docs/customer-experience.md).
+- **Intent search.** ⌘K, type an app or “plan dinner,” enter. Matching runs locally against your available apps.
+- **Personal spaces.** Focus, downtime, everyday life, or a custom set of apps saved to your account.
+- **A focus room.** 15, 25 or 50 minutes; pause, resume, leave and return. Focus sessions and recent apps stay in this browser, scoped to your account.
 - **An app library.** Every app in your profile with description, version, group and health; search and filter; hide the ones you never open.
 - **Activity.** What the apps published about you (the admin sees the household's bus too), grouped by day, linking back into the app. Members see their own doings in the Pocket apps that let the hub read them: the hub asks each app for an `events:read` link, which the admin and every person can switch off in Core.
 - **Honest about who sees what.** The hub never reads the person's list with its own app token. Core's audience rules decide, the hub only draws.

@@ -2,6 +2,7 @@
 export type Wallpaper = { id: string; name: string; css: string; accent: string }
 
 export const WALLPAPERS: Wallpaper[] = [
+  { id: 'midnight', name: 'Observatory', accent: '#abdcc8', css: 'radial-gradient(ellipse at 76% 0%, #193b36 0%, transparent 48%), radial-gradient(ellipse at 0% 95%, #202a38 0%, transparent 50%), #0b1316' },
   { id: 'dusk', name: 'Dusk', accent: '#8b7cf6', css: 'radial-gradient(120% 90% at 15% 10%, #4338ca 0%, transparent 55%), radial-gradient(90% 80% at 85% 20%, #be185d 0%, transparent 55%), radial-gradient(100% 100% at 50% 100%, #0f172a 0%, #020617 70%), #0b1020' },
   { id: 'aurora', name: 'Aurora', accent: '#34d399', css: 'radial-gradient(110% 80% at 10% 20%, #065f46 0%, transparent 55%), radial-gradient(90% 70% at 80% 10%, #0e7490 0%, transparent 55%), radial-gradient(80% 80% at 60% 90%, #4c1d95 0%, transparent 60%), #06121a' },
   { id: 'ocean', name: 'Ocean', accent: '#38bdf8', css: 'radial-gradient(120% 90% at 20% 0%, #0369a1 0%, transparent 55%), radial-gradient(90% 90% at 90% 40%, #1e3a8a 0%, transparent 55%), radial-gradient(100% 80% at 40% 100%, #042f2e 0%, transparent 60%), #04101f' },

@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { api, V1 } from './api'
+import { useNavigate } from 'react-router-dom'
 import type { AuthStatus, Launcher, Prefs, Tile, User } from './types'
 
 type Ctx = {
@@ -10,11 +11,16 @@ type Ctx = {
   launcher: Launcher | null
   reload: () => Promise<void>
   loading: boolean
+  launcherError: boolean
   prefs: Prefs
+  prefsError: boolean
+  retryPrefs: () => void
   setPrefs: (p: Partial<Prefs> | ((p: Prefs) => Prefs)) => void
   tiles: Tile[]          // ordered, hidden removed
   allTiles: Tile[]       // ordered, hidden included
   dockTiles: Tile[]
+  openApps: string[]
+  setOpenApps: (keys: string[]) => void
   open: (t: Tile) => void
   sheet: Tile | null
   setSheet: (t: Tile | null) => void
@@ -28,8 +34,11 @@ const AppCtx = createContext<Ctx>(null as unknown as Ctx)
 export function useApp() { return useContext(AppCtx) }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate()
+  const [openApps, setOpenApps] = useState<string[]>([])
   const [status, setStatus] = useState<AuthStatus | null>(null)
   const [launcher, setLauncher] = useState<Launcher | null>(null)
+  const [launcherError, setLauncherError] = useState(false)
   const [loading, setLoading] = useState(false)
   const [prefs, setPrefsState] = useState<Prefs>({})
   const [sheet, setSheet] = useState<Tile | null>(null)
@@ -37,6 +46,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [editing, setEditing] = useState(false)
   const saveTimer = useRef<number | null>(null)
   const prefsRef = useRef<Prefs>({})
+  const pendingPrefs = useRef<Prefs | null>(null)
+  const savingPrefs = useRef(false)
+  const prefsRevision = useRef(0)
+  const [prefsError, setPrefsError] = useState(false)
+  const flushPrefs = useCallback(async () => {
+    if (savingPrefs.current) return
+    savingPrefs.current = true
+    while (pendingPrefs.current) {
+      const next = pendingPrefs.current
+      pendingPrefs.current = null
+      try { await api.put(`${V1}/prefs`, next); setPrefsError(false) }
+      catch { pendingPrefs.current = pendingPrefs.current || next; setPrefsError(true); break }
+    }
+    savingPrefs.current = false
+  }, [])
 
   const refresh = useCallback(async () => {
     try { setStatus(await api.get<AuthStatus>(`${V1}/auth/status`)) } catch { setStatus(s => s) }
@@ -44,19 +68,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const reload = useCallback(async () => {
     setLoading(true)
+    const revision = prefsRevision.current
     try {
       const l = await api.get<Launcher>(`${V1}/launcher`)
       setLauncher(l)
-      prefsRef.current = l.prefs || {}
-      setPrefsState(l.prefs || {})
-    } catch { /* 401 is handled globally */ } finally { setLoading(false) }
+      setLauncherError(false)
+      if (revision === prefsRevision.current && !pendingPrefs.current && !savingPrefs.current) {
+        prefsRef.current = l.prefs || {}
+        setPrefsState(l.prefs || {})
+      }
+    } catch { setLauncherError(true) } finally { setLoading(false) }
   }, [])
 
   const logout = useCallback(async () => {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    await flushPrefs()
     await api.post(`${V1}/auth/logout`)
+    pendingPrefs.current = null
+    prefsRef.current = {}
+    setPrefsState({})
+    setPrefsError(false)
     setLauncher(null)
+    setOpenApps([])
     await refresh()
-  }, [refresh])
+  }, [refresh, flushPrefs])
 
   useEffect(() => { refresh() }, [refresh])
   useEffect(() => {
@@ -84,10 +119,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setPrefs = useCallback((p: Partial<Prefs> | ((p: Prefs) => Prefs)) => {
     const next = typeof p === 'function' ? p(prefsRef.current) : { ...prefsRef.current, ...p }
     prefsRef.current = next
+    pendingPrefs.current = next
+    prefsRevision.current++
     setPrefsState(next)
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
-    saveTimer.current = window.setTimeout(() => { api.put(`${V1}/prefs`, next).catch(() => {}) }, 400)
-  }, [])
+    saveTimer.current = window.setTimeout(() => { void flushPrefs() }, 400)
+  }, [flushPrefs])
 
   const allTiles = useMemo(() => {
     const apps = launcher?.apps || []
@@ -111,7 +148,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return tiles.filter(t => t.pocket && t.type !== 'core' && t.type !== 'firefly').slice(0, 6)
   }, [allTiles, tiles, prefs.dock])
 
-  const open = useCallback((t: Tile) => { window.location.assign(t.open_url || t.url) }, [])
+  const open = useCallback((t: Tile) => {
+    window.dispatchEvent(new CustomEvent('hub:launch', { detail: t.key }))
+    setOpenApps(keys => keys.includes(t.key) ? keys : [...keys, t.key])
+    setSheet(null); setPalette(false)
+    navigate(`/app/${encodeURIComponent(t.key)}`)
+  }, [navigate])
 
   // ⌘K / Ctrl-K opens the palette; Escape closes whatever is open
   useEffect(() => {
@@ -123,6 +165,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const value: Ctx = { status, user: status?.user || null, refresh, logout, launcher, reload, loading, prefs, setPrefs, tiles, allTiles, dockTiles, open, sheet, setSheet, palette, setPalette, editing, setEditing }
+  const value: Ctx = { status, user: status?.user || null, refresh, logout, launcher, reload, loading, launcherError, prefs, prefsError, retryPrefs: flushPrefs, setPrefs, tiles, allTiles, dockTiles, openApps, setOpenApps, open, sheet, setSheet, palette, setPalette, editing, setEditing }
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
 }

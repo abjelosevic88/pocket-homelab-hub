@@ -14,6 +14,8 @@ jobs:
         with: { go-version-file: go.mod, cache: true }
       - name: Build web UI
         run: cd web && npm ci --no-audit --no-fund && npm run build
+      - name: Browser tests
+        run: cd web && npx playwright install --with-deps chromium && npm run test:e2e
       - name: Vet & test
         run: |
           test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)

@@ -43,6 +43,8 @@ export type Box = {
 }
 
 export type Prefs = {
+  spaces?: { id: string; name: string; color: string; apps: string[] }[]
+  active_space?: string
   wallpaper?: string
   wallpaper_url?: string
   density?: 'cozy' | 'compact'

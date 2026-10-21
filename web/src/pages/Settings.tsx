@@ -31,8 +31,8 @@ export default function SettingsPage() {
       <Glass className="panel">
         <div className="swatches">
           {WALLPAPERS.map(w => (
-            <button key={w.id} className={`swatch ${(prefs.wallpaper || 'dusk') === w.id && !prefs.wallpaper_url ? 'on' : ''}`} style={{ background: w.css }} onClick={() => setPrefs({ wallpaper: w.id, wallpaper_url: '' })} title={w.name}>
-              {(prefs.wallpaper || 'dusk') === w.id && !prefs.wallpaper_url && <Check />}<span className="swatch-name">{w.name}</span>
+            <button key={w.id} className={`swatch ${(prefs.wallpaper || 'midnight') === w.id && !prefs.wallpaper_url ? 'on' : ''}`} style={{ background: w.css }} onClick={() => setPrefs({ wallpaper: w.id, wallpaper_url: '' })} title={w.name}>
+              {(prefs.wallpaper || 'midnight') === w.id && !prefs.wallpaper_url && <Check />}<span className="swatch-name">{w.name}</span>
             </button>
           ))}
         </div>

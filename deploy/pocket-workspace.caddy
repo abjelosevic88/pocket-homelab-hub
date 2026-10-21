@@ -1,0 +1,14 @@
+# Import this snippet at the top level of your Caddyfile, then use it only
+# inside app vhosts intentionally made available in Pocket Hub.
+# Pass the complete allowed frame-ancestor list, including existing integrations.
+# Example: import pocket_workspace "'self' https://hub.example.com"
+(pocket_workspace) {
+	header {
+		-X-Frame-Options
+		# Preserve every other CSP directive. The second policy protects
+		# responses that had X-Frame-Options but no frame-ancestors directive.
+		Content-Security-Policy "(?i)frame-ancestors[^;]*(;|$)" "frame-ancestors {args[0]};"
+		+Content-Security-Policy "frame-ancestors {args[0]};"
+		defer
+	}
+}

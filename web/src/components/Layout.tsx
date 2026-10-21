@@ -2,14 +2,22 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/app-context'
 import { wallpaper } from '../lib/wallpapers'
-import { clock, greeting } from '../lib/format'
+import { clock } from '../lib/format'
 import { AppIcon } from './AppIcon'
 import { Gear, Grid, Home, Pulse, Search } from './icons'
 import { AppSheet } from './AppSheet'
 import { Palette } from './Palette'
+import { PersonalProvider } from '../lib/personal-context'
+import { AppWorkspace } from './experience/AppWorkspace'
+import { FocusSession } from './experience/FocusSession'
 
 export default function Layout() {
-  const { user, prefs, dockTiles, open, sheet, setSheet, palette, setPalette, launcher, editing, setEditing } = useApp()
+  const { user } = useApp()
+  return <PersonalProvider key={user?.id} userId={user?.id || 0}><Desktop /></PersonalProvider>
+}
+
+function Desktop() {
+  const { user, prefs, dockTiles, open, sheet, setSheet, palette, setPalette, launcher, editing, setEditing, prefsError, retryPrefs } = useApp()
   const wp = wallpaper(prefs.wallpaper)
   const [now, setNow] = useState(new Date())
   const loc = useLocation()
@@ -18,21 +26,21 @@ export default function Layout() {
   useEffect(() => { setEditing(false) }, [loc.pathname, setEditing])
 
   const style = prefs.wallpaper_url ? { backgroundImage: `url("${prefs.wallpaper_url}")` } : { background: wp.css }
-  const first = (user?.name || user?.email || '').split(/[\s@]/)[0]
+  const inApp = loc.pathname.startsWith('/app/')
   const box = launcher?.box?.name || 'Pocket Box'
 
   return (
-    <div className={`desk ${prefs.density === 'compact' ? 'compact' : ''} ${editing ? 'editing' : ''}`} style={{ ['--accent' as string]: wp.accent }}>
+    <div className={`desk ${inApp ? 'workspace-mode' : ''} ${prefs.density === 'compact' ? 'compact' : ''} ${editing ? 'editing' : ''}`} style={{ ['--accent' as string]: wp.accent }}>
       <div className={`wallpaper ${prefs.wallpaper_url ? 'image' : ''}`} style={style} aria-hidden="true" />
       <div className="wallpaper-noise" aria-hidden="true" />
 
       <header className="topbar">
         <div className="topbar-left">
-          <div className="box-name">{box}</div>
-          <div className="greet">{greeting(now)}{first ? `, ${first}` : ''}</div>
+          <div className="box-name"><span className="brand-mark">p.</span>{box}<span className="brand-edition">YOUR PERSONAL WORLD</span></div>
+          <nav className="main-nav" aria-label="Main navigation"><NavLink to="/" end>Home</NavLink><NavLink to="/apps">Apps</NavLink><NavLink to="/activity">Activity</NavLink></nav>
         </div>
-        <button className="searchpill" onClick={() => setPalette(true)} aria-label="Search apps">
-          <Search /><span>Search apps…</span><kbd>⌘K</kbd>
+        <button className="searchpill" onClick={() => setPalette(true)} aria-label="Search apps or intentions">
+          <Search /><span>What would you like to do?</span><kbd>⌘K</kbd>
         </button>
         <div className="topbar-right">
           <div className="clock" title={now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}>
@@ -43,9 +51,12 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="desk-main"><Outlet /></main>
+      <main className="desk-main" hidden={inApp}><Outlet /></main>
+      <AppWorkspace />
+      <FocusSession />
+      {prefsError && <div className="save-notice" role="alert">Your changes haven’t saved yet.<button onClick={retryPrefs}>Try again</button></div>}
 
-      <nav className="dock" aria-label="Dock">
+      <nav className="dock" aria-label="Dock" hidden={inApp}>
         <div className="dock-inner">
           {dockTiles.map(t => (
             <button key={t.key} className="dock-item" onClick={() => open(t)} onContextMenu={e => { e.preventDefault(); setSheet(t) }} title={t.name}>

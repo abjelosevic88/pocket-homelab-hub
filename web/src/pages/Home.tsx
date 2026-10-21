@@ -2,57 +2,41 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, V1 } from '../lib/api'
 import { useApp } from '../lib/app-context'
-import { eventTitle, humanTopic, timeAgo, tileForTopic, uptime } from '../lib/format'
 import type { Activity, Tile } from '../lib/types'
 import { AppIcon } from '../components/AppIcon'
 import { Glass, Spinner } from '../components/ui'
 import { Check, Refresh } from '../components/icons'
+import { HomeExperience, Briefing } from '../components/experience/HomeExperience'
+import { spacesFor, spaceTiles } from '../lib/experience'
 
 export default function HomePage() {
-  const { launcher, tiles, prefs, setPrefs, open, setSheet, editing, setEditing, reload, loading, status } = useApp()
+  const { launcher, tiles, prefs, setPrefs, open, setSheet, editing, setEditing, reload, loading, launcherError, status } = useApp()
+  const [activityError, setActivityError] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const [activity, setActivity] = useState<Activity | null>(null)
   useEffect(() => {
     let alive = true
-    const load = () => api.get<Activity>(`${V1}/activity`).then(a => { if (alive) setActivity(a) }).catch(() => {})
+    const load = () => api.get<Activity>(`${V1}/activity`).then(a => { if (alive) { setActivity(a); setActivityError(false) } }).catch(() => { if (alive) setActivityError(true) })
     load()
     const t = window.setInterval(load, 60000)
     return () => { alive = false; window.clearInterval(t) }
   }, [launcher?.box?.apps_up])
 
-  if (!launcher) return <div className="center"><Spinner /></div>
+  if (!launcher) return <div className="center">{launcherError ? <Glass className="connect"><h2>Your box is taking a moment.</h2><p>We couldn’t load your apps. Try connecting again.</p><button className="btn" onClick={reload}>Try again</button></Glass> : <Spinner />}</div>
   if (launcher.core === 'reconnect') return <Connect kind="reconnect" name={status?.oidc_name || 'Pocket Core'} />
   if (launcher.core === 'unconfigured') return <Connect kind="unconfigured" name="" />
   if (launcher.core === 'unreachable') return <Connect kind="unreachable" name="" error={launcher.error} onRetry={reload} />
 
-  const box = launcher.box
-  const groups = prefs.group ? groupTiles(tiles) : [['', tiles] as [string, Tile[]]]
-  const recent = (activity?.events || []).slice(0, 4)
+  const activeSpace = spacesFor(prefs).find(s => s.id === prefs.active_space)
+  const selected = activeSpace ? spaceTiles(activeSpace, tiles) : tiles
+  const visible = showAll || editing || activeSpace ? selected : selected.slice(0, 12)
+  const groups = prefs.group ? groupTiles(visible) : [['', visible] as [string, Tile[]]]
 
   return (
     <div className="home">
-      <section className="widgets">
-        <Glass className="widget">
-          <div className="widget-label">Apps</div>
-          <div className="widget-big">{box?.apps_up ?? 0}<span className="widget-sub"> / {box?.apps_checked ?? 0} online</span></div>
-          <div className="ring" style={{ ['--pct' as string]: box && box.apps_checked ? (box.apps_up / box.apps_checked) * 100 : 0 }}><span /></div>
-          <div className="widget-foot">{tiles.length} on your home screen</div>
-        </Glass>
-        <Glass className="widget">
-          <div className="widget-label">Box</div>
-          <div className="widget-big trunc">{box?.name}</div>
-          <div className="widget-foot">Core {box?.core_version ? 'v' + box.core_version.replace(/^v/, '').split('-')[0] : ''} · up {uptime(box?.core_uptime_s)}</div>
-          {box?.counts && <div className="widget-foot faint">{box.counts.users} people · {box.counts.devices} devices · {box.counts.events} events</div>}
-        </Glass>
-        <Glass className="widget wide">
-          <div className="widget-label"><Link to="/activity">Activity</Link></div>
-          {recent.length === 0 && <div className="widget-foot">{activity?.scope === 'none' ? 'Nothing to show yet.' : 'Quiet so far.'}</div>}
-          {recent.map(e => {
-            const t = tileForTopic(tiles, e.topic)
-            return <div key={e.id} className="ev tiny">{t ? <AppIcon t={t} size={18} /> : <span className="ico letter tiny" />}<span className="ev-topic">{t ? t.name.replace(/^Pocket /, '') : e.topic.split('.')[0]}</span><span className="ev-title">{humanTopic(e.topic)}{eventTitle(e) ? ` · ${eventTitle(e)}` : ''}</span><span className="ev-time">{timeAgo(e.created_at)}</span></div>
-          })}
-        </Glass>
-      </section>
-
+      <HomeExperience />
+      <section id="space-apps" className="home-apps">
+      <div className="section-heading"><div><div className="eyebrow">YOUR EVERYDAY, ONE TAP AWAY</div><h2>{activeSpace?.name || 'All your possibilities.'}<span className="heading-count">{selected.length}</span></h2></div><div className="row">{activeSpace && <button className="text-button" onClick={() => setPrefs({ active_space: 'all' })}>All apps</button>}<Link className="text-button" to="/apps">App library ↗</Link></div></div>
       <div className="grid-tools">
         {editing ? <button className="btn small on" onClick={() => setEditing(false)}><Check /> Done</button> : <button className="btn small ghost" onClick={() => setEditing(true)}>Edit layout</button>}
         <button className="btn small ghost sq" onClick={reload} title="Refresh"><Refresh /></button>
@@ -65,6 +49,11 @@ export default function HomePage() {
           <AppGrid list={list} all={tiles} editing={editing} open={open} setSheet={setSheet} onReorder={order => setPrefs({ order })} labels={prefs.labels !== false} />
         </section>
       ))}
+      {activeSpace && selected.length === 0 && <div className="empty">No apps in this space yet. Try another space or create your own.</div>}
+      {!activeSpace && selected.length > 12 && !editing && <button className="show-more" onClick={() => setShowAll(v => !v)}>{showAll ? 'Show a little less ↑' : `Explore all ${selected.length} apps ↓`}</button>}
+      </section>
+      <Briefing activity={activity} error={activityError} />
+      <footer className="home-footer"><span className="brand-mark">p.</span><span>A little box. A world of possibilities.</span><Link to="/settings">Make it yours ↗</Link></footer>
       {tiles.length === 0 && <Glass className="empty">No apps in your profile yet. Ask the box owner to add you to some services in Pocket Core.</Glass>}
     </div>
   )
@@ -80,6 +69,8 @@ function AppGrid({ list, all, editing, open, setSheet, onReorder, labels }: { li
   const dragKey = useRef<string | null>(null)
   const [over, setOver] = useState<string | null>(null)
   const pressTimer = useRef<number | null>(null)
+  const longPressed = useRef(false)
+  useEffect(() => () => { if (pressTimer.current) window.clearTimeout(pressTimer.current) }, [])
   const keys = useMemo(() => all.map(t => t.key), [all])
 
   const drop = (target: string) => {
@@ -101,12 +92,14 @@ function AppGrid({ list, all, editing, open, setSheet, onReorder, labels }: { li
           onDragOver={e => { if (editing) { e.preventDefault(); setOver(t.key) } }}
           onDragLeave={() => setOver(o => (o === t.key ? null : o))}
           onDrop={e => { e.preventDefault(); drop(t.key) }}
-          onClick={() => (editing ? setSheet(t) : open(t))}
+          onClick={() => { if (!longPressed.current) { if (editing) setSheet(t); else open(t) } longPressed.current = false }}
           onContextMenu={e => { e.preventDefault(); setSheet(t) }}
-          onPointerDown={() => { pressTimer.current = window.setTimeout(() => setSheet(t), 550) }}
+          onPointerDown={() => { longPressed.current = false; pressTimer.current = window.setTimeout(() => { longPressed.current = true; setSheet(t) }, 550) }}
+          onPointerCancel={() => { if (pressTimer.current) window.clearTimeout(pressTimer.current) }}
           onPointerUp={() => { if (pressTimer.current) window.clearTimeout(pressTimer.current) }}
           onPointerLeave={() => { if (pressTimer.current) window.clearTimeout(pressTimer.current) }}
           title={t.name}
+          aria-label={t.name}
         >
           <span className="tile-ico">
             <AppIcon t={t} />
@@ -125,17 +118,17 @@ function Connect({ kind, name, error, onRetry }: { kind: 'reconnect' | 'unconfig
       <Glass className="connect">
         <img src="/favicon.svg" alt="" width={64} height={64} />
         {kind === 'reconnect' && <>
-          <h2>Connect to {name}</h2>
-          <p>The hub shows the apps in <em>your</em> profile, read from Pocket Core as you. Sign in with Pocket Core once and the home screen fills in.</p>
-          <a className="btn primary lg" href={`${V1}/auth/oidc/start?next=/`}>Sign in with {name}</a>
+          <h2>Welcome to your Pocket Box</h2>
+          <p>Sign in to bring your apps and personal spaces together.</p>
+          <a className="btn primary lg" href={`${V1}/auth/oidc/start?next=/`}>Continue to your account</a>
         </>}
         {kind === 'unconfigured' && <>
-          <h2>No Pocket Core yet</h2>
-          <p>Point the hub at your Core with <code>CORE_URL</code> and <code>CORE_REGISTRATION_KEY</code>, then restart it. Every app registered there appears here.</p>
+          <h2>Your box is still being prepared</h2>
+          <p>The person who set up your Pocket Box needs to finish connecting your apps.</p>
         </>}
         {kind === 'unreachable' && <>
-          <h2>Pocket Core is not answering</h2>
-          <p className="mono small">{error}</p>
+          <h2>Your box is having trouble connecting</h2>
+          <p>Your apps couldn’t be loaded right now. Please try again in a moment.</p>
           <button className="btn primary" onClick={onRetry}>Try again</button>
         </>}
       </Glass>

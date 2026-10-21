@@ -2,29 +2,39 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../lib/app-context'
 import { AppIcon } from './AppIcon'
 import { Search } from './icons'
+import { searchApps, intentHints } from '../lib/experience'
 
 export function Palette({ onClose }: { onClose: () => void }) {
   const { allTiles, open, setSheet } = useApp()
   const [q, setQ] = useState('')
   const [i, setI] = useState(0)
   const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => { ref.current?.focus() }, [])
-  const hits = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return allTiles.slice(0, 12)
-    const score = (n: string) => n.toLowerCase().startsWith(s) ? 0 : n.toLowerCase().includes(s) ? 1 : 2
-    return allTiles.filter(t => `${t.name} ${t.type} ${t.group}`.toLowerCase().includes(s)).sort((a, b) => score(a.name) - score(b.name)).slice(0, 12)
-  }, [q, allTiles])
+  const dialog = useRef<HTMLDivElement>(null)
+  const previousFocus = useRef(document.activeElement as HTMLElement | null)
+  useEffect(() => {
+    ref.current?.focus()
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const items = [...(dialog.current?.querySelectorAll<HTMLElement>('input, button') || [])]
+      const first = items[0], last = items[items.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
+    }
+    document.addEventListener('keydown', trap)
+    return () => { document.removeEventListener('keydown', trap); previousFocus.current?.focus() }
+  }, [])
+  const hits = useMemo(() => searchApps(allTiles, q), [q, allTiles])
   useEffect(() => { setI(0) }, [q])
   const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setI(v => Math.min(v + 1, hits.length - 1)) }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setI(v => Math.max(0, Math.min(v + 1, hits.length - 1))) }
     if (e.key === 'ArrowUp') { e.preventDefault(); setI(v => Math.max(v - 1, 0)) }
     if (e.key === 'Enter' && hits[i]) { e.preventDefault(); if (e.metaKey || e.ctrlKey) { setSheet(hits[i]); onClose() } else open(hits[i]) }
   }
   return (
     <div className="backdrop top" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="palette" role="dialog" aria-modal="true">
-        <div className="palette-input"><Search /><input ref={ref} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey} placeholder="Search apps" /><kbd>esc</kbd></div>
+      <div ref={dialog} className="palette" role="dialog" aria-modal="true" aria-label="Find an app or something to do">
+        <div className="palette-input"><Search /><input ref={ref} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey} placeholder="Try “plan dinner” or an app name" aria-label="Search apps or intentions" /><kbd>esc</kbd></div>
+        {!q && <div className="intent-hints">{intentHints(allTiles).map(h => <button key={h} onClick={() => setQ(h)}>{h} ↗</button>)}</div>}
         <div className="palette-list">
           {hits.map((t, k) => (
             <button key={t.key} className={`palette-row ${k === i ? 'active' : ''}`} onMouseEnter={() => setI(k)} onClick={() => open(t)}>
@@ -34,7 +44,7 @@ export function Palette({ onClose }: { onClose: () => void }) {
               {t.status === 'down' && <span className="dot down" />}
             </button>
           ))}
-          {hits.length === 0 && <div className="palette-empty">Nothing matches “{q}”.</div>}
+          {hits.length === 0 && <div className="palette-empty">Nothing matches “{q}”. Try an app name or something like “plan my day”.</div>}
         </div>
         <div className="palette-foot"><span><kbd>↵</kbd> open</span><span><kbd>⌘↵</kbd> details</span><span><kbd>↑↓</kbd> move</span></div>
       </div>
