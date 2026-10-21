@@ -20,7 +20,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .pocket-navigation a,.sidebar-bottom>a { display:flex; align-items:center; gap:12px; min-height:44px; padding:10px 13px; border-radius:9px; font-size:13px; color:#b9b2b8; border:1px solid transparent; text-decoration:none; }
 .pocket-navigation svg,.sidebar-bottom>a svg { width:18px; height:18px; flex:none; }
 .pocket-navigation a:hover,.sidebar-bottom>a:hover { background:#ffffff06; color:#fff; }
-.pocket-navigation a.active { background:#67cbd615; border-color:#67cbd61d; color:#a5dce2; box-shadow:inset 3px 0 #67cbd6; }
+.pocket-navigation a.active { background:#67cbd615; border-color:#67cbd61d; color:#a5dce2; }
 .sidebar-label { display:flex; align-items:center; justify-content:space-between; padding:0 12px 12px; color:#837b83; font-size:9px; letter-spacing:.14em; }
 .sidebar-label a { font-size:19px; color:#ada2aa; }
 .sidebar-favorites { overflow:auto; min-height:0; scrollbar-width:thin; scrollbar-color:#63515b transparent; }
@@ -54,7 +54,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .pocket-welcome h1 em { font-family:Georgia,serif; font-weight:400; color:#d0d9da; }
 .pocket-welcome p { font-size:12px; color:#a69ca3; line-height:1.6; margin:0; }
 .welcome-guide-button { font-size:10px; flex-shrink:0; }
-.pocket-capture-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; border:1px solid #83b4ba23; border-left:3px solid #67b9c5; border-radius:10px; background:#49788110; }
+.pocket-capture-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; border:1px solid #83b4ba23; border-radius:10px; background:#49788110; }
 .pocket-capture-bar>span { font:italic 18px Georgia,serif; color:#ccd5d7; }
 .pocket-capture-bar>div { display:flex; flex-wrap:wrap; gap:8px; }
 .pocket-capture-bar button { padding:9px 13px; background:#ffffff05; border:1px solid #ffffff12; border-radius:7px; font-size:11px; color:#d3dadd; }
