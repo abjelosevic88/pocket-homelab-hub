@@ -1,0 +1,24 @@
+# Pocket Hub next to a Pocket Core. Set BASE_URL to the address browsers use and
+# CORE_REGISTRATION_KEY from Core → Settings; the hub registers itself on start.
+services:
+  hub:
+    image: ghcr.io/abjelosevic88/pocket-homelab-hub:latest
+    container_name: pocket-hub
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Europe/Sarajevo
+      BASE_URL: https://hub.example.com
+      SECURE_COOKIES: "true"
+      CORE_URL: http://pocket-core:8080
+      CORE_REGISTRATION_KEY: ${CORE_REGISTRATION_KEY}
+      # Where Core reaches the hub (defaults to BASE_URL):
+      # CORE_APP_URL: http://pocket-hub:8080
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
