@@ -16,7 +16,7 @@ test('Pocket Box home brings daily content and personal widgets together without
   await expect(page.locator('.home-apps')).toHaveCount(0)
   await expect(page.locator('.pocket-sidebar .pocket-brand img')).toHaveAttribute('src', '/pocket-box.png')
   await expect.poll(() => page.locator('.pocket-sidebar .pocket-brand img').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(512)
-  expect(await page.locator('link[rel="icon"]').getAttribute('href')).toBe('/pocket-box-favicon.png')
+  expect(await page.locator('link[rel="icon"]').getAttribute('href')).toBe('/pocket-box-favicon.png?v=rounded')
   expect(harness.prefs).toEqual(before)
   await page.screenshot({ path: testInfo.outputPath('box-home-desktop.png'), fullPage: true })
   for (const width of [1024, 800, 768, 390, 320]) {
