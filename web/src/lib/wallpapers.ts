@@ -2,6 +2,7 @@
 export type Wallpaper = { id: string; name: string; css: string; accent: string }
 
 export const WALLPAPERS: Wallpaper[] = [
+  { id: 'pocket-box', name: 'Pocket Box', accent: '#67cbd6', css: 'radial-gradient(ellipse at 90% 0%, #20383e 0%, transparent 55%), #171719' },
   { id: 'pocket-ember', name: 'Pocket Ember', accent: '#ff6078', css: 'radial-gradient(ellipse at 90% 0%, #49212b 0%, transparent 55%), #171719' },
   { id: 'midnight', name: 'Observatory', accent: '#abdcc8', css: 'radial-gradient(ellipse at 76% 0%, #193b36 0%, transparent 48%), radial-gradient(ellipse at 0% 95%, #202a38 0%, transparent 50%), #0b1316' },
   { id: 'dusk', name: 'Dusk', accent: '#8b7cf6', css: 'radial-gradient(120% 90% at 15% 10%, #4338ca 0%, transparent 55%), radial-gradient(90% 80% at 85% 20%, #be185d 0%, transparent 55%), radial-gradient(100% 100% at 50% 100%, #0f172a 0%, #020617 70%), #0b1020' },

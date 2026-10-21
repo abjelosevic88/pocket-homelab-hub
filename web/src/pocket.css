@@ -1,14 +1,15 @@
-/* Pocket Homelab · Ember. Shared identity for the appliance home and workspace. */
-:root { --accent:#ff6078; --text:#f2eee8; --text-2:#d3ced0; --muted:#aaa5a9; --faint:#8e898e; --glass:#222226; --glass-2:#2c2b30; --glass-3:#343138; --line:#ffffff12; --line-2:#ffffff20; --sidebar-width:220px; --topbar-h:72px; --dock-h:0px; --radius:16px; }
+/* Pocket Box · Open lid. Shared identity for the appliance home and workspace. */
+:root { --accent:#67cbd6; --text:#f2eee8; --text-2:#d3ced0; --muted:#aaa5a9; --faint:#8e898e; --glass:#222226; --glass-2:#2c2b30; --glass-3:#343138; --line:#ffffff12; --line-2:#ffffff20; --sidebar-width:220px; --topbar-h:72px; --dock-h:0px; --radius:16px; }
 body { background:#171719; }
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid #ff8b9c; outline-offset:4px; }
-.btn.primary { background:#c63550; border-color:#e24a64; color:#fff; }
-.btn.primary:hover { background:#dc3f5c; }
-.btn.on,.chip.on { color:#ffb5c1; background:#f553721b; border-color:#f5537240; }
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid #83d5de; outline-offset:4px; }
+.btn.primary { background:#226c78; border-color:#39818c; color:#fff; }
+.btn.primary:hover { background:#297d89; }
+.btn.on,.chip.on { color:#b0dce1; background:#67cbd61b; border-color:#67cbd640; }
 .text-button { color:#c2bbc0; }.text-button:hover { color:#fff; }
 .eyebrow { color:#b4a3a9; letter-spacing:.13em; font-size:9px; }
 .pocket-shell { min-height:100dvh; padding:0; background:#171719eb; }
-.pocket-shell .wallpaper { inset:0; opacity:.2; animation:none; will-change:auto; }
+.pocket-shell .wallpaper { inset:0; opacity:.12; animation:none; will-change:auto; }
+.pocket-shell .wallpaper:not(.image) { filter:saturate(.25); }
 .pocket-sidebar { width:var(--sidebar-width); position:fixed; inset:0 auto 0 0; z-index:25; padding:28px 18px 20px; display:flex; flex-direction:column; background:#121214; border-right:1px solid var(--line); }
 .pocket-brand { display:flex; align-items:center; gap:11px; min-width:0; }
 .pocket-brand img { flex:none; width:44px; height:44px; border-radius:12px; }
@@ -19,7 +20,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .pocket-navigation a,.sidebar-bottom>a { display:flex; align-items:center; gap:12px; min-height:44px; padding:10px 13px; border-radius:9px; font-size:13px; color:#b9b2b8; border:1px solid transparent; text-decoration:none; }
 .pocket-navigation svg,.sidebar-bottom>a svg { width:18px; height:18px; flex:none; }
 .pocket-navigation a:hover,.sidebar-bottom>a:hover { background:#ffffff06; color:#fff; }
-.pocket-navigation a.active { background:#f74c6915; border-color:#f74c691d; color:#ff9bae; box-shadow:inset 3px 0 #ff4b6c; }
+.pocket-navigation a.active { background:#67cbd615; border-color:#67cbd61d; color:#a5dce2; box-shadow:inset 3px 0 #67cbd6; }
 .sidebar-label { display:flex; align-items:center; justify-content:space-between; padding:0 12px 12px; color:#837b83; font-size:9px; letter-spacing:.14em; }
 .sidebar-label a { font-size:19px; color:#ada2aa; }
 .sidebar-favorites { overflow:auto; min-height:0; scrollbar-width:thin; scrollbar-color:#63515b transparent; }
@@ -34,7 +35,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .sidebar-account>span:last-child { display:flex; flex-direction:column; min-width:0; gap:4px; }
 .sidebar-account strong { font-size:11px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sidebar-account small { font-size:9px; color:#8f858c; }
-.avatar { background:#47313a; color:#ffc4d0; flex-shrink:0; }
+.avatar { background:#2b3b40; color:#c1e2e5; flex-shrink:0; }
 .pocket-content { margin-left:var(--sidebar-width); min-width:0; }
 .pocket-shell .topbar { height:var(--topbar-h); padding:0 32px; grid-template-columns:1fr minmax(220px,360px) auto; gap:24px; background:#19191bed; border-bottom:1px solid var(--line); backdrop-filter:blur(16px); }
 .desktop-section { font-size:13px; color:#c0b7bd; }
@@ -42,7 +43,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .pocket-shell .searchpill { width:100%; border-radius:8px; height:36px; font-size:11px; background:#ffffff03; border-color:#ffffff10; }
 .pocket-shell .searchpill svg { width:15px; height:15px; }
 .pocket-shell .topbar-right { gap:18px; }
-.pocket-shell .quick-capture-button { border-radius:8px; min-height:36px; padding:7px 12px; background:#c63550; border-color:#f8688230; color:#fff; font-size:17px; gap:4px; }
+.pocket-shell .quick-capture-button { border-radius:8px; min-height:36px; padding:7px 12px; background:#226c78; border-color:#83d5de30; color:#fff; font-size:17px; gap:4px; }
 .pocket-shell .quick-capture-button span { font-size:12px; }
 .pocket-shell .clock .time { font-size:12px; color:#ccc3c9; }.pocket-shell .clock .date { font-size:9px; color:#8d858c; }
 .account-button { display:none; }
@@ -50,14 +51,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .pocket-shell .home { gap:32px; }
 .pocket-welcome { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:9px 0 0; }
 .pocket-welcome h1 { font-size:clamp(30px,3vw,43px); line-height:1.2; font-weight:500; letter-spacing:-.045em; margin:10px 0; overflow-wrap:anywhere; }
-.pocket-welcome h1 em { font-family:Georgia,serif; font-weight:400; color:#eeb8b5; }
+.pocket-welcome h1 em { font-family:Georgia,serif; font-weight:400; color:#d0d9da; }
 .pocket-welcome p { font-size:12px; color:#a69ca3; line-height:1.6; margin:0; }
 .welcome-guide-button { font-size:10px; flex-shrink:0; }
-.pocket-capture-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; border:1px solid #ec688123; border-left:3px solid #ef5e78; border-radius:10px; background:#ae3c5010; }
-.pocket-capture-bar>span { font:italic 18px Georgia,serif; color:#e1c6ca; }
+.pocket-capture-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; border:1px solid #83b4ba23; border-left:3px solid #67b9c5; border-radius:10px; background:#49788110; }
+.pocket-capture-bar>span { font:italic 18px Georgia,serif; color:#ccd5d7; }
 .pocket-capture-bar>div { display:flex; flex-wrap:wrap; gap:8px; }
-.pocket-capture-bar button { padding:9px 13px; background:#ffffff05; border:1px solid #ffffff12; border-radius:7px; font-size:11px; color:#e0d2d8; }
-.pocket-capture-bar button:hover { background:#e15c7420; border-color:#e15c7440; }
+.pocket-capture-bar button { padding:9px 13px; background:#ffffff05; border:1px solid #ffffff12; border-radius:7px; font-size:11px; color:#d3dadd; }
+.pocket-capture-bar button:hover { background:#67cbd620; border-color:#67cbd640; }
 .section-heading { margin-bottom:16px; }.section-heading h2 { font-size:20px; margin-top:5px; letter-spacing:-.035em; }
 .home-daily-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
 .home-daily-empty { display:flex; align-items:center; justify-content:space-between; gap:20px; border:1px solid var(--line); border-radius:12px; background:#222226; padding:22px; }
@@ -75,28 +76,28 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .widget-board-heading h2 { font-size:24px; font-weight:500; letter-spacing:-.035em; }.widget-toolbar .btn { border-radius:7px; }
 .home-widget { border-radius:16px; }.tone-glass { --w-bg:#27262c; --w-fg:#f4eee8; --w-border:#ffffff10; backdrop-filter:none; }
 .widget-grid { gap:14px; }.widget-board-heading { margin-bottom:18px; }
-.space-card { background:#222226; border-color:var(--line); border-radius:12px; }.space-card.selected { background:#2b252b; border-color:#ca7b8d; }.space-card:hover { transform:translateY(-2px); }
-.space-select { padding:18px; }.space-top { margin-bottom:17px; }.space-select h3 { font-size:16px; }.space-select p { color:#aaa0a7; }.space-edit { background:#392e35; color:#f0bdc8; }
-.recent-strip { margin:0; padding:14px 0; }.recent-apps button { color:#cfc3ca; }.home-apps { background:#222226; border-color:var(--line); }
+.space-card { background:#222226; border-color:var(--line); border-radius:12px; }.space-card.selected { background:#252c30; border-color:#6d9da5; }.space-card:hover { transform:translateY(-2px); }
+.space-select { padding:18px; }.space-top { margin-bottom:17px; }.space-select h3 { font-size:16px; }.space-select p { color:#aaa0a7; }.space-edit { background:#2d393e; color:#c1dade; }
+.recent-strip { margin:0; padding:14px 0; }.recent-apps button { color:#cbd1d4; }.home-apps { background:#222226; border-color:var(--line); }
 .home-footer { border-top:1px solid var(--line); padding:24px 0 30px; margin:0; color:#9e929a; gap:20px; }
 .home-footer .pocket-brand img { width:27px; height:27px; border-radius:7px; }.home-footer .pocket-brand strong { font-size:12px; }.home-footer .pocket-brand small { font-size:8px; }.home-footer>span:nth-child(2) { font-size:11px; font-family:Georgia,serif; font-style:italic; }
 .pocket-shell.workspace-mode { display:block; height:100dvh; overflow:hidden; }
 .workspace-mode .pocket-content { height:100dvh; display:flex; flex-direction:column; }.pocket-shell .app-workspace { background:#19191d; }
-.pocket-shell .workspace-tab.active { background:#ee5b7515; border-color:#ee5b752c; }.pocket-shell .workspace-bar { padding-inline:24px; }
+.pocket-shell .workspace-tab.active { background:#67cbd615; border-color:#67cbd62c; }.pocket-shell .workspace-bar { padding-inline:24px; }
 .sheet,.palette { background:#242226fa; border-color:#ffffff20; }.sheet,.palette,.glass { box-shadow:0 20px 70px -35px #000b; }
-.capture-kinds button[aria-pressed=true] { background:#eb5a7218; border-color:#eb5a7255; color:#ffbac7; }
-.widget-form input:focus,.widget-form textarea:focus,.widget-form select:focus,.widget-search:focus { outline-color:#ff8b9c; }
+.capture-kinds button[aria-pressed=true] { background:#67cbd618; border-color:#67cbd655; color:#b0dce1; }
+.widget-form input:focus,.widget-form textarea:focus,.widget-form select:focus,.widget-search:focus { outline-color:#83d5de; }
 .widget-form input:not([type=checkbox]),.widget-form textarea,.widget-form select,.widget-search { background:#18171c; }
-.capture-success>span { background:#f8547317; color:#ff9caf; }.capture-draft-note>span { color:#aaa0a7; }
-.widget-categories button[aria-pressed=true],.widget-size-options button[aria-pressed=true] { color:#ffd3dc; background:#d151681a; border-color:#d1516850; }
+.capture-success>span { background:#67cbd617; color:#9ad5dd; }.capture-draft-note>span { color:#aaa0a7; }
+.widget-categories button[aria-pressed=true],.widget-size-options button[aria-pressed=true] { color:#c7e3e6; background:#67cbd61a; border-color:#67cbd650; }
 .widget-preview-stage { background:#1b1a20; }.space-form input,.space-form textarea { background:#18171c; }
-.focus-mini,.workspace-mode .focus-mini { bottom:22px; background:#30252cf5; border-color:#e47a9040; }.focus-mini-dot { background:#ff8ca1; }
-.save-notice { top:auto; bottom:20px; left:calc(50% + var(--sidebar-width) / 2); align-items:center; z-index:45; }.switch.on { background:#c63550; }.avatar { box-shadow:none; }
-.today-page { padding-top:6px; }.today-heading h1 { font-size:40px; margin:12px 0; }.today-heading h1 br { display:none; }.today-heading h1 em { margin-left:.2em; color:#eeb8b5; }.today-heading p { font-size:12px; }
-.daily-capture-strip { background:#ae3c5010; border-color:#ec688123; border-radius:10px; }.daily-capture-strip button:hover { background:#e15c7420; }
+.focus-mini,.workspace-mode .focus-mini { bottom:22px; background:#273339f5; border-color:#76afb840; }.focus-mini-dot { background:#83d5de; }
+.save-notice { top:auto; bottom:20px; left:calc(50% + var(--sidebar-width) / 2); align-items:center; z-index:45; }.switch.on { background:#226c78; }.avatar { box-shadow:none; }
+.today-page { padding-top:6px; }.today-heading h1 { font-size:40px; margin:12px 0; }.today-heading h1 br { display:none; }.today-heading h1 em { margin-left:.2em; color:#d0d9da; }.today-heading p { font-size:12px; }
+.daily-capture-strip { background:#49788110; border-color:#83b4ba23; border-radius:10px; }.daily-capture-strip button:hover { background:#67cbd620; }
 .page-head h1 { letter-spacing:-.04em; }.glass.panel,.card { background:#222226; border-color:#ffffff12; }
 .login-desk { background:#171719; padding:0; }.login-desk .wallpaper { opacity:.5; animation:none; }.login-desk .wallpaper-noise { display:none; }.login-desk .center { min-height:100dvh; }
-.login { background:#211e23ee; border:1px solid #f7688022; border-radius:22px; }.login-logo { border-radius:20px; }.login-maker { font-size:9px; letter-spacing:.16em; color:#e6a3b0; margin:20px 0 8px; }.login h1 { letter-spacing:-.05em; }.login .muted { color:#b4a7af; }
+.login { background:#1e2226ee; border:1px solid #76afb822; border-radius:22px; }.login-logo { border-radius:20px; }.login-maker { font-size:9px; letter-spacing:.16em; color:#99c6ce; margin:20px 0 8px; }.login h1 { letter-spacing:-.05em; }.login .muted { color:#b4a7af; }
 @media(max-width:1250px) { .home-daily-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.daily-compact { min-height:220px; }.pocket-shell .topbar { gap:16px; grid-template-columns:1fr minmax(190px,280px) auto; }.pocket-shell .clock { display:none; } }
 @media(max-width:1050px) and (min-width:801px) { :root { --sidebar-width:190px; }.pocket-sidebar { padding-inline:13px; }.pocket-brand img { width:36px; height:36px; border-radius:10px; }.pocket-brand strong { font-size:14px; }.pocket-brand small { font-size:9px; }.pocket-shell .desk-main { padding-inline:24px; }.welcome-guide-button { display:none; }.pocket-capture-bar { align-items:flex-start; flex-direction:column; }.spaces-grid { grid-template-columns:1fr; }.space-select p { min-height:0; }.space-top { margin-bottom:10px; } }
 @media(max-width:800px) {
@@ -112,7 +113,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .home-daily-grid { gap:10px; }.daily-compact { padding:14px; min-height:220px; }.daily-compact .daily-card-heading>div>span:not(.ico) { font-size:9px; }.daily-compact .daily-card-heading { gap:2px; }.daily-compact .daily-card-heading>div { gap:5px; }.daily-compact .daily-card-heading .ico { width:20px !important; height:20px !important; }.daily-compact h2 { font-size:16px; margin:15px 0 12px; }.daily-compact .daily-metrics { gap:12px; }.daily-compact .daily-metrics strong { font-size:23px; }.daily-compact .daily-metrics span { font-size:7px; }.daily-compact .daily-items strong { font-size:10px; }.daily-compact .daily-items small { font-size:8px; }
   .home-daily-empty { align-items:flex-start; flex-direction:column; gap:15px; padding:18px; }.section-heading h2 { font-size:20px; }.widget-board-heading h2 { font-size:22px; }
   .mobile-navigation { position:fixed; inset:auto 0 0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); min-height:var(--mobile-nav-h); padding:8px 6px calc(8px + env(safe-area-inset-bottom)); background:#171719fa; border-top:1px solid #ffffff12; z-index:30; }
-  .mobile-navigation a { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; padding:4px; font-size:9px; color:#a89aa3; border-radius:7px; text-decoration:none; }.mobile-navigation svg { width:19px; height:19px; }.mobile-navigation a.active { color:#ff8ba2; background:#e44a6510; }
+  .mobile-navigation a { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; padding:4px; font-size:9px; color:#a89aa3; border-radius:7px; text-decoration:none; }.mobile-navigation svg { width:19px; height:19px; }.mobile-navigation a.active { color:#9ad5dd; background:#67cbd610; }
   .home-footer { flex-wrap:wrap; gap:16px; padding-bottom:24px; }.home-footer>span:nth-child(2) { display:none; }.home-footer>a { margin-left:auto; }
   .pocket-shell.workspace-mode .pocket-content { height:calc(100dvh - var(--mobile-nav-h)); padding-bottom:0; }.pocket-shell .workspace-bar { padding-inline:10px; gap:7px; }.workspace-tab { gap:7px; padding:7px; }.workspace-tab>button:first-child { font-size:10px; }
   .focus-mini,.workspace-mode .focus-mini { bottom:calc(var(--mobile-nav-h) + 12px); right:12px; }.save-notice { bottom:calc(var(--mobile-nav-h) + 12px); }

@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="web/public/pocket-ember.png" width="72" alt="">
+  <img src="web/public/pocket-box.png" width="72" alt="">
 </p>
 <h1 align="center">Pocket Hub</h1>
 <p align="center">
-  The customer home and unified app workspace for a <b>Pocket Box</b>: an Ember-branded home with daily summaries, quick capture, customizable widgets, personal spaces, a focus room, intent search, and apps that stay open as you move through your day. Connected to <a href="https://github.com/abjelosevic88/pocket-homelab-core">Pocket Core</a>.<br>
+  The customer home and unified app workspace for a <b>Pocket Box</b>: a personal home with daily summaries, quick capture, customizable widgets, personal spaces, a focus room, intent search, and apps that stay open as you move through your day. Connected to <a href="https://github.com/abjelosevic88/pocket-homelab-core">Pocket Core</a>.<br>
   <b>One binary · one SQLite file · one volume · nothing of its own to configure.</b>
 </p>
 <p align="center">
@@ -17,7 +17,7 @@
 A Pocket Box runs a dozen Pocket apps and a few dozen third-party services, and Pocket Core knows which of them each person in the household may use. The hub is the window on that: it has no app list of its own. A person signs in with Pocket Core, the hub reads *their* launcher from Core with *their* token, and draws it.
 
 - **A home that’s yours.** A searchable gallery of 19 widget types: clock, calendar, focus, favorites, recently opened apps, activity, spaces, app shortcuts, quick notes, checklists, countdowns, photo frames, app health, Box information, things to do, and four live widgets for Tasks, Habits, Kitchen and Notes. Add up to 24 widgets, choose supported small/medium/large sizes, and arrange them with touch, mouse or keyboard. Notes, checklists and layout save to your account. Remove with undo; restore starter widgets; hide the spaces or app grid. [Widget behavior and extension guide](docs/widgets.md).
-- **Personal touches.** The original Pocket Homelab Ember icon, a labeled favorites sidebar, adjustable home atmosphere, app order and hidden apps. Long-press or right-click an app tile for details; *Edit layout* to arrange apps.
+- **Personal touches.** The distinctive open-lid Pocket Box icon, a labeled favorites sidebar, adjustable home atmosphere, app order and hidden apps. Long-press or right-click an app tile for details; *Edit layout* to arrange apps.
 - **Your day together.** Today brings tasks due, habit check-ins, planned meals and recently edited notes into one personal view, with independent source refresh and honest unavailable states.
 - **Catch a thought anywhere.** Capture a task, note or journal moment from the top bar without leaving an open app. Choose the destination, save to your own account, and keep unfinished drafts while moving around Hub. Retried saves have duplicate protection. [Today and capture guide](docs/daily-and-capture.md).
 - **A unified workspace.** Apps open inside Hub with persistent navigation and an app switcher. Going Home or switching apps preserves open app state; closing a tab or reloading the browser ends that workspace. Tiles for Pocket apps open the app's *Sign in with Pocket Core* entry, so the click lands you in the app as yourself, even on a browser that was someone else a minute ago. Third-party apps need compatible embedding and sign-in settings; see the [customer experience and integration guide](docs/customer-experience.md).
@@ -72,6 +72,6 @@ MIT.
 
 ### Pocket Homelab identity
 
-The customer shell uses the original Pocket Homelab **Ember** artwork, supplied by the owner from the native app's icon assets. The unmodified source is `web/public/pocket-ember.png`; browser and installable-app sizes are derived from it. The legacy `favicon.svg` URL also displays Ember for existing shortcuts.
+The customer shell uses the owner-selected **open-lid Pocket Box** icon: a graphite box with a restrained cyan opening, generated with the built-in image tool. The original is preserved in `docs/design/pocket-box-original.png`; the optimized app artwork is `web/public/pocket-box.png`. Browser, Apple and installable-app sizes are derived from the same artwork. The legacy `favicon.svg` URL also displays the box for existing shortcuts. Charcoal surfaces and muted cyan accents carry the identity through the interface.
 
 Home combines personal daily summaries with the existing widget layout. Labeled navigation and favorites replace the floating dock; phones use a fixed navigation bar. Existing favorite keys, wallpapers, widgets and explicitly enabled home app grids remain intact. The full app grid is off by default for new layouts and available in the library or through Home options. Selecting or saving a Space reveals its apps.

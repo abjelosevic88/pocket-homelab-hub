@@ -211,7 +211,7 @@ func (s *Server) manifest() core.Manifest {
 	m := core.Manifest{
 		Slug: "hub", Name: "Pocket Hub",
 		Description: "The home screen of the box: every app a person may open, signed in with one tap, with live status and what happened lately.",
-		Icon:        "/pocket-ember.png", Version: Version,
+		Icon:        "/pocket-box.png", Version: Version,
 		URL: s.cfg.CoreAppURL, PublicURL: s.cfg.BaseURL, HealthPath: "/healthz", EnvPrefix: "HUB",
 	}
 	if s.cfg.BaseURL != "" {

@@ -1,4 +1,4 @@
-export const BRAND_ICON = '/pocket-ember.png'
+export const BRAND_ICON = '/pocket-box.png'
 
 export function Brand({ name = 'Pocket Box', compact = false }: { name?: string; compact?: boolean }) {
   return <span className={`pocket-brand ${compact ? 'compact-brand' : ''}`}>

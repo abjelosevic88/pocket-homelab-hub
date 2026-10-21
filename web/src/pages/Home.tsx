@@ -118,7 +118,7 @@ function Connect({ kind, name, error, onRetry }: { kind: 'reconnect' | 'unconfig
   return (
     <div className="center">
       <Glass className="connect">
-        <img src="/pocket-ember.png" alt="" width={64} height={64} />
+        <img src="/pocket-box.png" alt="" width={64} height={64} />
         {kind === 'reconnect' && <>
           <h2>Welcome to your Pocket Box</h2>
           <p>Sign in to bring your apps and personal spaces together.</p>
