@@ -429,13 +429,22 @@ func (s *Server) handleActivity(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// Consecutive repeats of the same thing (an app re-registering every half hour,
+	// a health check flapping) collapse into one line.
 	out := make([]core.Event, 0, len(events))
+	last := ""
 	for _, e := range events {
-		if v.sees(e) {
-			out = append(out, e)
-			if len(out) == 100 {
-				break
-			}
+		if !v.sees(e) {
+			continue
+		}
+		if k := e.Topic + "\x00" + e.Subject; k == last {
+			continue
+		} else {
+			last = k
+		}
+		out = append(out, e)
+		if len(out) == 100 {
+			break
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"events": out, "scope": scope})

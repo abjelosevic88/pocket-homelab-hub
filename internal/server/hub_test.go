@@ -64,6 +64,8 @@ func fakeCore(t *testing.T, asked *[]string) *httptest.Server {
 			{"id": 3, "topic": "jellyfin.item_added", "source": "connector:jellyfin", "payload": map[string]any{"title": "Dune"}},
 			{"id": 4, "topic": "radarr.grabbed", "source": "connector:radarr", "payload": map[string]any{"title": "x"}},
 			{"id": 5, "topic": "core.device.paired", "source": "core", "payload": map[string]any{}},
+			{"id": 6, "topic": "jellyfin.item_added", "source": "connector:jellyfin", "subject": "item:9", "payload": map[string]any{"title": "Dune"}},
+			{"id": 7, "topic": "jellyfin.item_added", "source": "connector:jellyfin", "subject": "item:9", "payload": map[string]any{"title": "Dune"}},
 		})
 	})
 	ts := httptest.NewServer(mux)
@@ -190,8 +192,8 @@ func TestActivityVisibility(t *testing.T) {
 	for _, e := range out["events"].([]any) {
 		ids = append(ids, e.(map[string]any)["id"].(float64))
 	}
-	if len(ids) != 2 || ids[0] != 1 || ids[1] != 3 {
-		t.Errorf("member sees %v (want own habits.marked + household jellyfin only)", ids)
+	if len(ids) != 3 || ids[0] != 1 || ids[1] != 3 || ids[2] != 6 {
+		t.Errorf("member sees %v (want own habits.marked + household jellyfin, repeats collapsed)", ids)
 	}
 }
 
