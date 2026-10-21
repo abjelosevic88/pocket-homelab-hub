@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="web/public/pocket-box.png" width="72" alt="">
+  <img src="docs/design/pocket-box-readme.svg" width="72" height="72" alt="Pocket Box">
 </p>
 <h1 align="center">Pocket Hub</h1>
 <p align="center">
