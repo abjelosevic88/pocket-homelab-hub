@@ -3,7 +3,7 @@ import { usePersonal, timerLabel } from '../../lib/personal-context'
 import { useApp } from '../../lib/app-context'
 import { AppIcon } from '../AppIcon'
 import { SPACES, spaceTiles } from '../../lib/experience'
-import { Modal } from '../ui'
+import { Modal, OverlayPresence } from '../ui'
 
 export function FocusSession() {
   const { focus, remaining, start, pause, resume, reset } = usePersonal()
@@ -26,7 +26,7 @@ export function FocusSession() {
   const close = () => { setExpanded(false); trigger.current?.focus() }
   return <>
     {focus.active && <button ref={trigger} className={`focus-mini ${done ? 'complete' : ''}`} onClick={() => setExpanded(true)} aria-label="Open focus session"><span className="focus-mini-dot" />{done ? 'A little progress, made.' : `${timerLabel(remaining)} · ${focus.endsAt ? 'Focusing' : 'Paused'}`}<span>↗</span></button>}
-    {expanded && <Modal title="A little space to think." onClose={close}>
+    <OverlayPresence>{expanded && <Modal title="A little space to think." onClose={close}>
       <div className="focus-room">
         <p className="muted">One thing at a time is enough.</p>
         <div className={`focus-orb ${focus.endsAt && !done ? 'running' : ''}`} style={{ ['--progress' as string]: focus.active ? (1 - remaining / focus.duration) * 100 : 0 }}>
@@ -40,6 +40,6 @@ export function FocusSession() {
         {apps.length > 0 && <div className="focus-apps">{apps.map(t => <button key={t.key} onClick={() => open(t)}><AppIcon t={t} size={34} /><span>{t.name.replace(/^Pocket /, '')}</span></button>)}</div>}
         <p className="fine-print">Your timer keeps its place when you leave. Saved only in this browser for your account.</p>
       </div>
-    </Modal>}
+    </Modal>}</OverlayPresence>
   </>
 }

@@ -9,7 +9,7 @@ import { AppIcon } from '../AppIcon'
 import { Search } from '../icons'
 import { Orbit } from './Orbit'
 import { SpaceEditor } from './SpaceEditor'
-import { Modal } from '../ui'
+import { Modal, OverlayPresence } from '../ui'
 
 export function HomeExperience({ children }: { children?: ReactNode }) {
   const { user, tiles, prefs, setPrefs, setPalette, open } = useApp()
@@ -46,8 +46,8 @@ export function HomeExperience({ children }: { children?: ReactNode }) {
         </div>
       })}</div>
     </section>}
-    {editor && <SpaceEditor space={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}
-    {guide && <Modal title="Make yourself at home." onClose={() => setGuide(false)}><div className="welcome-guide"><p>Your Pocket Box brings your apps together in one personal home. Start anywhere. Make it yours as you go.</p><Link to="/apps" onClick={() => setGuide(false)}><b>01</b><span><strong>Find your next favorite</strong><small>Explore all the apps available to you.</small></span><span>↗</span></Link><button onClick={() => { setGuide(false); setEditor('new') }}><b>02</b><span><strong>Give your day a space</strong><small>Bring a few apps together for something you love.</small></span><span>↗</span></button><Link to="/settings" onClick={() => setGuide(false)}><b>03</b><span><strong>Add your own touch</strong><small>Choose your wallpaper, favorites and layout.</small></span><span>↗</span></Link><p className="fine-print">Your spaces and layout belong to your account. Recently opened apps and focus sessions stay in this browser.</p></div></Modal>}
+    <OverlayPresence>{editor && <SpaceEditor space={editor === 'new' ? undefined : editor} onClose={() => setEditor(null)} />}</OverlayPresence>
+    <OverlayPresence>{guide && <Modal title="Make yourself at home." onClose={() => setGuide(false)}><div className="welcome-guide"><p>Your Pocket Box brings your apps together in one personal home. Start anywhere. Make it yours as you go.</p><Link to="/apps" onClick={() => setGuide(false)}><b>01</b><span><strong>Find your next favorite</strong><small>Explore all the apps available to you.</small></span><span>↗</span></Link><button onClick={() => { setGuide(false); setEditor('new') }}><b>02</b><span><strong>Give your day a space</strong><small>Bring a few apps together for something you love.</small></span><span>↗</span></button><Link to="/settings" onClick={() => setGuide(false)}><b>03</b><span><strong>Add your own touch</strong><small>Choose your wallpaper, favorites and layout.</small></span><span>↗</span></Link><p className="fine-print">Your spaces and layout belong to your account. Recently opened apps and focus sessions stay in this browser.</p></div></Modal>}</OverlayPresence>
   </>
 }
 

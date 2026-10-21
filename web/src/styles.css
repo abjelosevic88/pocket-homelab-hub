@@ -303,3 +303,10 @@ kbd { font: 11px/1 var(--mono); padding: 3px 6px; border-radius: 6px; background
   .page-head h1 { font-size: 22px; }
 }
 @media (hover: none) { .tile:hover, .dock-item:hover, .card:hover { transform: none; } }
+
+/* Match opening motion on dismissal; retain the overlay until it has faded. */
+.backdrop.exiting { animation:overlay-exit .18s ease-in forwards; }
+.backdrop.exiting>.sheet,.backdrop.exiting>.palette { animation:dialog-exit .18s cubic-bezier(.4,0,1,1) forwards; }
+@keyframes overlay-exit { to { opacity:0; } }
+@keyframes dialog-exit { to { opacity:0; transform:translateY(10px) scale(.98); } }
+@media(prefers-reduced-motion:reduce) { .backdrop.exiting,.backdrop.exiting>.sheet,.backdrop.exiting>.palette { animation:none; } }

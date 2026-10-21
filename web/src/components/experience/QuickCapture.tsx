@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useApp } from '../../lib/app-context'
 import { api, ApiError, V1 } from '../../lib/api'
 import { localDay, useDaily } from '../../lib/daily-context'
-import { Modal } from '../ui'
+import { Modal, OverlayPresence } from '../ui'
 
 type Kind = 'task' | 'note' | 'moment'
 const appKinds: Record<Kind, string> = { task: 'tasks', note: 'notes', moment: 'day' }
@@ -54,8 +54,7 @@ export function QuickCapture() {
   }
   const reset = () => { setDraft(fresh(draft.kind)); setSaved(null); setUncertain(false); setProblem('') }
   const openTarget = () => { const tile = allTiles.find(t => t.key === (saved?.app_key || target?.app_key)); if (tile) { setVisible(false); open(tile) } }
-  if (!visible) return null
-  return <Modal className="capture-sheet" title={saved ? 'A little less on your mind.' : 'Catch it while it’s here.'} onClose={() => setVisible(false)}>
+  return <OverlayPresence>{visible && <Modal className="capture-sheet" title={saved ? 'A little less on your mind.' : 'Catch it while it’s here.'} onClose={() => setVisible(false)}>
     {saved ? <div className="capture-success"><span>✓</span><h3>{names[saved.kind]} saved.</h3><p>It’s in {allTiles.find(t => t.key === saved.app_key)?.name || 'your app'}, under your account.</p><div className="row"><button className="btn primary" onClick={openTarget}>Open app</button><button className="btn" onClick={reset}>Capture another</button></div></div> : <form className="widget-form capture-form" onSubmit={e => { e.preventDefault(); void save() }}>
       <p className="capture-intro">An idea, a thing to do, a moment to remember. Choose where it belongs.</p>
       <fieldset disabled={busy || uncertain} className="capture-fields">
@@ -77,5 +76,5 @@ export function QuickCapture() {
       <div className="capture-draft-note"><span>Closing keeps this draft while you stay signed in here. Reloading or signing out clears it.</span>{(draft.title || draft.text) && !busy && <button type="button" className="text-button" onClick={reset}>{uncertain ? 'Start a new capture' : 'Clear draft'}</button>}</div>
       </div>
     </form>}
-  </Modal>
+  </Modal>}</OverlayPresence>
 }

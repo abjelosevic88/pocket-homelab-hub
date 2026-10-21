@@ -1,3 +1,4 @@
+import { OverlayPresence } from './ui'
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/app-context'
@@ -74,8 +75,8 @@ function Desktop() {
         </div>
       </nav>
 
-      {sheet && <AppSheet t={sheet} onClose={() => setSheet(null)} />}
-      {palette && <Palette onClose={() => setPalette(false)} />}
+      <OverlayPresence>{sheet && <AppSheet t={sheet} onClose={() => setSheet(null)} />}</OverlayPresence>
+      <OverlayPresence>{palette && <Palette onClose={() => setPalette(false)} />}</OverlayPresence>
     </div>
   )
 }

@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../lib/app-context'
 import { AppIcon } from './AppIcon'
 import { Search } from './icons'
-import { useOverlayScrollLock } from './ui'
+import { useOverlayScrollLock, useOverlayExit, restoreOverlayFocus } from './ui'
 import { searchApps, intentHints } from '../lib/experience'
 
 export function Palette({ onClose }: { onClose: () => void }) {
   useOverlayScrollLock()
+  const exiting = useOverlayExit()
+  const exitingRef = useRef(exiting)
+  exitingRef.current = exiting
   const { allTiles, open, setSheet } = useApp()
   const [q, setQ] = useState('')
   const [i, setI] = useState(0)
@@ -16,14 +19,14 @@ export function Palette({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     ref.current?.focus({ preventScroll: true })
     const trap = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return
+      if (exitingRef.current || e.key !== 'Tab') return
       const items = [...(dialog.current?.querySelectorAll<HTMLElement>('input, button') || [])]
       const first = items[0], last = items[items.length - 1]
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus() }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
     }
     document.addEventListener('keydown', trap)
-    return () => { document.removeEventListener('keydown', trap); previousFocus.current?.focus({ preventScroll: true }) }
+    return () => { document.removeEventListener('keydown', trap); restoreOverlayFocus(previousFocus.current, dialog.current) }
   }, [])
   const hits = useMemo(() => searchApps(allTiles, q), [q, allTiles])
   useEffect(() => { setI(0) }, [q])
@@ -33,7 +36,7 @@ export function Palette({ onClose }: { onClose: () => void }) {
     if (e.key === 'Enter' && hits[i]) { e.preventDefault(); if (e.metaKey || e.ctrlKey) { setSheet(hits[i]); onClose() } else open(hits[i]) }
   }
   return (
-    <div className="backdrop top" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+    <div className={`backdrop top ${exiting ? 'exiting' : ''}`} inert={exiting} aria-hidden={exiting || undefined} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <div ref={dialog} className="palette" role="dialog" aria-modal="true" aria-label="Find an app or something to do">
         <div className="palette-input"><Search /><input ref={ref} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey} placeholder="Try “plan dinner” or an app name" aria-label="Search apps or intentions" /><kbd>esc</kbd></div>
         {!q && <div className="intent-hints">{intentHints(allTiles).map(h => <button key={h} onClick={() => setQ(h)}>{h} ↗</button>)}</div>}

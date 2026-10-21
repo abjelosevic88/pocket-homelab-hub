@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useId } from 'react'
+import React, { useEffect, useRef, useId, useState, createContext, useContext } from 'react'
 import { X } from './icons'
 
 // Share the lock so opening one overlay from another cannot restore scrolling early.
@@ -18,8 +18,38 @@ export function useOverlayScrollLock() {
   }, [])
 }
 
+// Keep the outgoing React tree alive until its exit finishes, including actions
+// that close from a parent (Save, Cancel, navigation and keyboard shortcuts).
+const OverlayExit = createContext(false)
+export const useOverlayExit = () => useContext(OverlayExit)
+export function OverlayPresence({ children }: { children: React.ReactElement | null | false | undefined }) {
+  const [retained, setRetained] = useState<React.ReactElement | null>(children || null)
+  if (children && children !== retained) setRetained(children)
+  const exiting = !children && !!retained
+  useEffect(() => {
+    if (!exiting) return
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const finish = () => setRetained(null)
+    if (motion.matches) { finish(); return }
+    const timer = window.setTimeout(finish, 200)
+    const change = () => { if (motion.matches) finish() }
+    motion.addEventListener('change', change)
+    return () => { window.clearTimeout(timer); motion.removeEventListener('change', change) }
+  }, [exiting])
+  return <OverlayExit.Provider value={exiting}>{children || retained}</OverlayExit.Provider>
+}
+
+export function restoreOverlayFocus(previous: HTMLElement | null, overlay: HTMLElement | null) {
+  // An outgoing dialog must not take focus away from its replacement.
+  const active = document.activeElement
+  if (!active?.closest('[role="dialog"]') || (active && overlay?.contains(active))) previous?.focus({ preventScroll: true })
+}
+
 export function Modal({ title, onClose, children, wide = false, className = '' }: { title?: React.ReactNode; onClose: () => void; children: React.ReactNode; wide?: boolean; className?: string }) {
   useOverlayScrollLock()
+  const exiting = useOverlayExit()
+  const exitingRef = useRef(exiting)
+  exitingRef.current = exiting
   const ref = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const previousFocus = useRef(document.activeElement as HTMLElement | null)
@@ -29,6 +59,7 @@ export function Modal({ title, onClose, children, wide = false, className = '' }
     const focusable = () => [...(ref.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex="0"]') || [])].filter(el => !el.closest('[inert]') && el.getClientRects().length > 0)
     if (!ref.current?.contains(document.activeElement)) focusable()[0]?.focus({ preventScroll: true })
     const handleKey = (e: KeyboardEvent) => {
+      if (exitingRef.current) return
       if (e.key === 'Escape') { e.preventDefault(); closeRef.current() }
       if (e.key === 'Tab') {
         const items = focusable(), first = items[0], last = items[items.length - 1]
@@ -37,10 +68,10 @@ export function Modal({ title, onClose, children, wide = false, className = '' }
       }
     }
     document.addEventListener('keydown', handleKey)
-    return () => { document.removeEventListener('keydown', handleKey); previousFocus.current?.focus({ preventScroll: true }) }
+    return () => { document.removeEventListener('keydown', handleKey); restoreOverlayFocus(previousFocus.current, ref.current) }
   }, [])
   return (
-    <div className="backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+    <div className={`backdrop ${exiting ? 'exiting' : ''}`} inert={exiting} aria-hidden={exiting || undefined} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className={`sheet ${wide ? 'wide' : ''} ${className}`} ref={ref} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} aria-label={title ? undefined : "App details"}>
         <button className="iconbtn sheet-close" onClick={onClose} aria-label="Close"><X /></button>
         {title && <h2 className="sheet-title" id={titleId}>{title}</h2>}
