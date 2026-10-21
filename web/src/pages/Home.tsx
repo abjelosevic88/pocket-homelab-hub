@@ -6,7 +6,8 @@ import type { Activity, Tile } from '../lib/types'
 import { AppIcon } from '../components/AppIcon'
 import { Glass, Spinner } from '../components/ui'
 import { Check, Refresh } from '../components/icons'
-import { HomeExperience, Briefing } from '../components/experience/HomeExperience'
+import { HomeExperience } from '../components/experience/HomeExperience'
+import { WidgetBoard } from '../components/widgets/WidgetBoard'
 import { spacesFor, spaceTiles } from '../lib/experience'
 
 export default function HomePage() {
@@ -34,8 +35,8 @@ export default function HomePage() {
 
   return (
     <div className="home">
-      <HomeExperience />
-      <section id="space-apps" className="home-apps">
+      <HomeExperience><WidgetBoard activity={activity} activityError={activityError} /></HomeExperience>
+      {prefs.home_show_apps !== false && <section id="space-apps" className="home-apps">
       <div className="section-heading"><div><div className="eyebrow">YOUR EVERYDAY, ONE TAP AWAY</div><h2>{activeSpace?.name || 'All your possibilities.'}<span className="heading-count">{selected.length}</span></h2></div><div className="row">{activeSpace && <button className="text-button" onClick={() => setPrefs({ active_space: 'all' })}>All apps</button>}<Link className="text-button" to="/apps">App library ↗</Link></div></div>
       <div className="grid-tools">
         {editing ? <button className="btn small on" onClick={() => setEditing(false)}><Check /> Done</button> : <button className="btn small ghost" onClick={() => setEditing(true)}>Edit layout</button>}
@@ -51,8 +52,7 @@ export default function HomePage() {
       ))}
       {activeSpace && selected.length === 0 && <div className="empty">No apps in this space yet. Try another space or create your own.</div>}
       {!activeSpace && selected.length > 12 && !editing && <button className="show-more" onClick={() => setShowAll(v => !v)}>{showAll ? 'Show a little less ↑' : `Explore all ${selected.length} apps ↓`}</button>}
-      </section>
-      <Briefing activity={activity} error={activityError} />
+      </section>}
       <footer className="home-footer"><span className="brand-mark">p.</span><span>A little box. A world of possibilities.</span><Link to="/settings">Make it yours ↗</Link></footer>
       {tiles.length === 0 && <Glass className="empty">No apps in your profile yet. Ask the box owner to add you to some services in Pocket Core.</Glass>}
     </div>

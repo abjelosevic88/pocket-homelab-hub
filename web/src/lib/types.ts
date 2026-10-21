@@ -1,3 +1,5 @@
+import type { HomeWidget } from './widgets'
+
 export type User = { id: number; email: string; name: string; role: 'admin' | 'member'; created_at: string }
 
 export type AuthStatus = {
@@ -43,6 +45,9 @@ export type Box = {
 }
 
 export type Prefs = {
+  home_widgets?: HomeWidget[]
+  home_show_spaces?: boolean
+  home_show_apps?: boolean
   spaces?: { id: string; name: string; color: string; apps: string[] }[]
   active_space?: string
   wallpaper?: string

@@ -463,7 +463,8 @@ func (s *Server) handlePutPrefs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b, _ := json.Marshal(in)
-	if len(b) > 64<<10 {
+	// Personal widgets may contain notes and checklists in multibyte scripts.
+	if len(b) > 256<<10 {
 		writeErr(w, http.StatusRequestEntityTooLarge, "preferences are too large")
 		return
 	}

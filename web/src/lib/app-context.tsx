@@ -14,6 +14,7 @@ type Ctx = {
   launcherError: boolean
   prefs: Prefs
   prefsError: boolean
+  prefsSaving: boolean
   retryPrefs: () => void
   setPrefs: (p: Partial<Prefs> | ((p: Prefs) => Prefs)) => void
   tiles: Tile[]          // ordered, hidden removed
@@ -47,20 +48,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const saveTimer = useRef<number | null>(null)
   const prefsRef = useRef<Prefs>({})
   const pendingPrefs = useRef<Prefs | null>(null)
-  const savingPrefs = useRef(false)
+  const savingPrefs = useRef<Promise<void> | null>(null)
   const prefsRevision = useRef(0)
   const [prefsError, setPrefsError] = useState(false)
-  const flushPrefs = useCallback(async () => {
-    if (savingPrefs.current) return
-    savingPrefs.current = true
-    while (pendingPrefs.current) {
-      const next = pendingPrefs.current
-      pendingPrefs.current = null
-      try { await api.put(`${V1}/prefs`, next); setPrefsError(false) }
-      catch { pendingPrefs.current = pendingPrefs.current || next; setPrefsError(true); break }
+  const [prefsSaving, setPrefsSaving] = useState(false)
+  const flushPrefs = useCallback((): Promise<void> => {
+    if (savingPrefs.current) return savingPrefs.current
+    if (!pendingPrefs.current) return Promise.resolve()
+    const save = async () => {
+      while (pendingPrefs.current) {
+        const next = pendingPrefs.current
+        pendingPrefs.current = null
+        try { await api.put(`${V1}/prefs`, next); setPrefsError(false) }
+        catch { pendingPrefs.current = pendingPrefs.current || next; setPrefsError(true); break }
+      }
     }
-    savingPrefs.current = false
+    savingPrefs.current = save().finally(() => { savingPrefs.current = null; setPrefsSaving(false) })
+    return savingPrefs.current
   }, [])
+
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') void flushPrefs() }
+    const onLeave = (event: BeforeUnloadEvent) => {
+      if (pendingPrefs.current || savingPrefs.current) { event.preventDefault(); event.returnValue = ''; void flushPrefs() }
+    }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('beforeunload', onLeave)
+    return () => { document.removeEventListener('visibilitychange', onHide); window.removeEventListener('beforeunload', onLeave) }
+  }, [flushPrefs])
 
   const refresh = useCallback(async () => {
     try { setStatus(await api.get<AuthStatus>(`${V1}/auth/status`)) } catch { setStatus(s => s) }
@@ -83,6 +98,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     await flushPrefs()
+    if (pendingPrefs.current) return // Keep unsaved personal notes available for retry.
     await api.post(`${V1}/auth/logout`)
     pendingPrefs.current = null
     prefsRef.current = {}
@@ -120,6 +136,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const next = typeof p === 'function' ? p(prefsRef.current) : { ...prefsRef.current, ...p }
     prefsRef.current = next
     pendingPrefs.current = next
+    setPrefsSaving(true)
     prefsRevision.current++
     setPrefsState(next)
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
@@ -165,6 +182,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const value: Ctx = { status, user: status?.user || null, refresh, logout, launcher, reload, loading, launcherError, prefs, prefsError, retryPrefs: flushPrefs, setPrefs, tiles, allTiles, dockTiles, openApps, setOpenApps, open, sheet, setSheet, palette, setPalette, editing, setEditing }
+  const value: Ctx = { status, user: status?.user || null, refresh, logout, launcher, reload, loading, launcherError, prefs, prefsError, prefsSaving, retryPrefs: flushPrefs, setPrefs, tiles, allTiles, dockTiles, openApps, setOpenApps, open, sheet, setSheet, palette, setPalette, editing, setEditing }
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
 }

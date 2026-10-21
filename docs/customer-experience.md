@@ -4,12 +4,12 @@ Hub is the product shell customers use, not a server dashboard. Its primary navi
 
 The home screen adds:
 
-- An app orbit derived from the person's visible Pocket apps. The lines are visual decoration, not a claim about network topology or data flows.
+- A personal widget board with 15 widget types, three supported sizes, a searchable gallery with live previews, and touch, mouse and keyboard arrangement. Layout and widget contents save per account; removing or restoring widgets offers undo. See [widgets](widgets.md) for data sources and extension rules.
 - Suggested spaces for focus, downtime and everyday life, plus custom spaces saved in the person's Hub preferences.
 - Local intent matching: “plan dinner,” “capture an idea,” “listen to music.” It searches available apps; it does not execute tasks or claim to be an AI assistant.
-- Recently opened apps stored under a per-user browser-storage key, with a clear action.
+- A recently opened widget backed by a per-user browser-storage key; the history can be cleared in the widget.
 - A focus room with 15/25/50 minute sessions, pause/resume, elapsed-time restoration, and cross-tab synchronization. Browser storage is account-scoped; this is not a server-synced timer or an alarm after the browser closes.
-- A first-visit guide available from “Make yourself at home,” personal wallpaper and favorites, and recent app activity. Server and download administration events stay out of the home brief; the full authorized feed remains in Activity.
+- A first-visit guide available from “Make yourself at home,” personal wallpaper and favorites, and recent app activity. The activity widget shows events associated with visible apps and excludes Core infrastructure topics; the full authorized feed remains in Activity.
 
 Core continues to decide service visibility and identity. No shared admin credential is introduced by the workspace. Customer deployments should use Core's audience settings to keep infrastructure administration apps out of ordinary customer profiles.
 
@@ -42,6 +42,6 @@ A frame load event is not proof that a cross-origin application rendered success
 
 `cd web && npm ci && npm run build && npx playwright install chromium && npm run test:e2e`
 
-The browser suite uses synthetic accounts and app frames. It checks intent routing, preserving drafts across app switches, custom spaces, failed saves and retry, timer restoration and account separation, mobile overflow, and keyboard focus. It never connects to customer services. Set `PLAYWRIGHT_CDP_URL` to use an existing Chromium instance when needed. Go authentication and audience tests remain in `go test ./...`.
+The browser suite uses synthetic accounts and app frames. It checks intent routing, preserving drafts across app switches, custom spaces, failed saves and retry, timer restoration and account separation, mobile overflow, and keyboard focus. Widget checks cover gallery previews, notes and checklists, calendar countdowns, time zones, pointer and touch arrangement, resize/remove/undo, empty layouts, failed and concurrent saves, revoked apps, photo fallback, malformed preferences, and the 24-widget limit. It never connects to customer services. Set `PLAYWRIGHT_CDP_URL` to use an existing Chromium instance when needed. Go authentication and audience tests remain in `go test ./...`.
 
 The unified workspace is the first product-shell implementation. Native cross-app actions, a single notification inbox, first-boot hardware provisioning, recovery and update management need dedicated Core/app contracts; the home screen does not pretend those capabilities already exist.

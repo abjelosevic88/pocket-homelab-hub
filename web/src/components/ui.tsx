@@ -10,7 +10,7 @@ export function Modal({ title, onClose, children, wide = false }: { title?: Reac
   useEffect(() => {
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    const focusable = () => [...(ref.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex="0"]') || [])]
+    const focusable = () => [...(ref.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex="0"]') || [])].filter(el => !el.closest('[inert]') && el.getClientRects().length > 0)
     if (!ref.current?.contains(document.activeElement)) focusable()[0]?.focus()
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); closeRef.current() }

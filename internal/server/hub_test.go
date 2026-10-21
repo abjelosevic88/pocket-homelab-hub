@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -223,5 +224,45 @@ func TestPrefsPerPerson(t *testing.T) {
 	}
 	if code, _ := get(t, ts, "/api/v1/prefs", "", ""); code != 401 {
 		t.Errorf("anonymous: %d", code)
+	}
+}
+
+// A full home of Unicode checklists fits, while oversized payloads stay bounded.
+func TestWidgetPrefsCapacity(t *testing.T) {
+	var asked []string
+	cs := fakeCore(t, &asked)
+	s, ts := newHub(t, cs.URL)
+	u := &store.User{Email: "widgets@example.com", Role: "member"}
+	_ = s.store.CreateUser(context.Background(), u)
+	session, _ := s.store.CreateSession(context.Background(), u.ID, time.Hour)
+	var widgets []map[string]any
+	for i := 0; i < 24; i++ {
+		var items []map[string]any
+		for j := 0; j < 12; j++ {
+			items = append(items, map[string]any{"id": fmt.Sprintf("item-%d", j), "text": strings.Repeat("家", 100), "done": false})
+		}
+		widgets = append(widgets, map[string]any{"id": fmt.Sprintf("widget-%d", i), "kind": "checklist", "size": "large", "config": map[string]any{"items": items}})
+	}
+	valid, _ := json.Marshal(map[string]any{"home_widgets": widgets})
+	for _, tc := range []struct {
+		body   string
+		status int
+	}{
+		{string(valid), http.StatusOK},
+		{`{"note":"` + strings.Repeat("x", 257<<10) + `"}`, http.StatusRequestEntityTooLarge},
+	} {
+		req, _ := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/prefs", strings.NewReader(tc.body))
+		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: session})
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != tc.status {
+			t.Fatalf("prefs status %d, want %d", res.StatusCode, tc.status)
+		}
+	}
+	if _, out := get(t, ts, "/api/v1/prefs", "", session); len(out["home_widgets"].([]any)) != 24 {
+		t.Fatal("oversized update should preserve previously saved widgets")
 	}
 }

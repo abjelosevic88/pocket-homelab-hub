@@ -42,7 +42,7 @@ Base path `/api/v1`. The session cookie, or `Authorization: Bearer <Core token>`
 | GET/PUT | `/auth/me` | `{user, core_linked}`; PUT `{name, current_password, new_password}` |
 | GET | `/launcher` | `{me, prefs, core: ok\|reconnect\|unconfigured\|unreachable, apps:[tile], box:{name, core_url, core_version, core_uptime_s, counts, apps_up, apps_checked}, refresh_seconds}` |
 | GET | `/activity` | `{events:[…], scope: box\|mine\|none}`, at most 100, newest first, already filtered for the caller |
-| GET/PUT | `/prefs` | the caller's layout as one JSON object (≤ 64 KiB): `wallpaper`, `wallpaper_url`, `density`, `labels`, `group`, `clock24`, `order`, `dock`, `hidden` |
+| GET/PUT | `/prefs` | the caller's layout as one JSON object (≤ 256 KiB): `wallpaper`, `wallpaper_url`, `density`, `labels`, `group`, `clock24`, `order`, `dock`, `hidden`, `spaces`, `active_space`, `home_widgets`, `home_show_spaces`, `home_show_apps` |
 | GET | `/system` | hub version, uptime, Core registration state |
 | GET | `/healthz` · `/readyz` · `/metrics` | outside `/api/v1` |
 
