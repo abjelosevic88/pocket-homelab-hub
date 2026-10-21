@@ -13,7 +13,8 @@ const FILES: Record<string, string> = {
   bookshelf: 'pocket-bookshelf.svg', clips: 'pocket-clips.svg', collaborator: 'pocket-collaborator.svg', day: 'pocket-day.svg', garage: 'pocket-garage.svg',
   habits: 'pocket-habits.svg', inventory: 'pocket-inventory.svg', invoicing: 'pocket-invoicing.svg', kitchen: 'pocket-kitchen.svg', money: 'pocket-money.svg',
   notes: 'pocket-notes.svg', podcasts: 'pocket-podcasts.svg', split: 'pocket-split.svg', subtitles: 'pocket-subtitles.svg', travel: 'pocket-travel.svg',
-  documents: 'pocket-documents.svg', tasks: 'pocket-tasks.svg', core: 'pocket-core.svg',
+  documents: 'pocket-documents.svg', tasks: 'pocket-tasks.svg', core: 'pocket-core.svg', files: 'pocket-files.svg',
+  office: 'pocket-office.svg', calendar: 'pocket-calendar.svg',
 }
 
 export function bundledIcon(type: string): string {
