@@ -1,10 +1,12 @@
 # Pocket Box customer experience
 
-Hub is the product shell customers use, not a server dashboard. Its primary navigation is Home, Apps and Activity. Apps open in an embedded workspace with a persistent app switcher; switching apps or returning Home keeps the frames mounted, including unsaved drafts. Closing an app or reloading the browser ends that in-memory workspace. Hub does not read documents or fields inside other apps.
+Hub is the product shell customers use, not a server dashboard. Its primary navigation is Home, Today, Apps and Activity. Apps open in an embedded workspace with a persistent app switcher; switching apps or returning Home keeps the frames mounted, including unsaved drafts. Closing an app or reloading the browser ends that in-memory workspace. Hub does not read documents or fields inside other apps.
+
+Today brings together personal tasks, habits, meal plans and recent notes. Quick capture saves tasks, notes and journal moments from the persistent top bar. See [Today and capture](daily-and-capture.md) for identity, reliability and limits.
 
 The home screen adds:
 
-- A personal widget board with 15 widget types, three supported sizes, a searchable gallery with live previews, and touch, mouse and keyboard arrangement. Layout and widget contents save per account; removing or restoring widgets offers undo. See [widgets](widgets.md) for data sources and extension rules.
+- A personal widget board with 19 widget types, three supported sizes, a searchable gallery with live previews, and touch, mouse and keyboard arrangement. Layout and widget contents save per account; removing or restoring widgets offers undo. See [widgets](widgets.md) for data sources and extension rules.
 - Suggested spaces for focus, downtime and everyday life, plus custom spaces saved in the person's Hub preferences.
 - Local intent matching: “plan dinner,” “capture an idea,” “listen to music.” It searches available apps; it does not execute tasks or claim to be an AI assistant.
 - A recently opened widget backed by a per-user browser-storage key; the history can be cleared in the widget.
@@ -44,4 +46,4 @@ A frame load event is not proof that a cross-origin application rendered success
 
 The browser suite uses synthetic accounts and app frames. It checks intent routing, preserving drafts across app switches, custom spaces, failed saves and retry, timer restoration and account separation, mobile overflow, and keyboard focus. Widget checks cover gallery previews, notes and checklists, calendar countdowns, time zones, pointer and touch arrangement, resize/remove/undo, empty layouts, failed and concurrent saves, revoked apps, photo fallback, malformed preferences, and the 24-widget limit. It never connects to customer services. Set `PLAYWRIGHT_CDP_URL` to use an existing Chromium instance when needed. Go authentication and audience tests remain in `go test ./...`.
 
-The unified workspace is the first product-shell implementation. Native cross-app actions, a single notification inbox, first-boot hardware provisioning, recovery and update management need dedicated Core/app contracts; the home screen does not pretend those capabilities already exist.
+The unified workspace is the first product-shell implementation. Richer cross-app actions, a single notification inbox, first-boot hardware provisioning, recovery and update management need dedicated Core/app contracts; the home screen does not pretend those capabilities already exist.

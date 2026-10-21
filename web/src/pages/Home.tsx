@@ -35,7 +35,7 @@ export default function HomePage() {
 
   return (
     <div className="home">
-      <HomeExperience><WidgetBoard activity={activity} activityError={activityError} /></HomeExperience>
+      <HomeExperience><Link className="home-today-link" to="/today"><span>✳</span><div><strong>Your day, already together.</strong><small>Tasks, habits, meals and notes from your connected apps.</small></div><span>Open Today ↗</span></Link><WidgetBoard activity={activity} activityError={activityError} /></HomeExperience>
       {prefs.home_show_apps !== false && <section id="space-apps" className="home-apps">
       <div className="section-heading"><div><div className="eyebrow">YOUR EVERYDAY, ONE TAP AWAY</div><h2>{activeSpace?.name || 'All your possibilities.'}<span className="heading-count">{selected.length}</span></h2></div><div className="row">{activeSpace && <button className="text-button" onClick={() => setPrefs({ active_space: 'all' })}>All apps</button>}<Link className="text-button" to="/apps">App library ↗</Link></div></div>
       <div className="grid-tools">

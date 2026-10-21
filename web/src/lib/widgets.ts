@@ -1,5 +1,5 @@
 export type WidgetSize = 'small' | 'medium' | 'large'
-export type WidgetKind = 'clock' | 'calendar' | 'focus' | 'favorites' | 'recent' | 'activity' | 'space' | 'shortcut' | 'note' | 'checklist' | 'countdown' | 'photo' | 'health' | 'box' | 'discover'
+export type WidgetKind = 'tasks-today' | 'habit-progress' | 'meal-plan' | 'recent-notes' | 'clock' | 'calendar' | 'focus' | 'favorites' | 'recent' | 'activity' | 'space' | 'shortcut' | 'note' | 'checklist' | 'countdown' | 'photo' | 'health' | 'box' | 'discover'
 export type WidgetConfig = {
   title?: string; timezone?: string; clockStyle?: 'digital' | 'analog'; appKey?: string; spaceId?: string
   note?: string; items?: { id: string; text: string; done: boolean }[]; targetDate?: string; photoUrl?: string
@@ -8,6 +8,10 @@ export type HomeWidget = { id: string; kind: WidgetKind; size: WidgetSize; confi
 export type WidgetDefinition = { kind: WidgetKind; name: string; description: string; category: 'Everyday' | 'Your apps' | 'Personal' | 'Your box'; symbol: string; tone: string; sizes: WidgetSize[]; initial: WidgetSize }
 export const MAX_WIDGETS = 24
 export const WIDGETS: WidgetDefinition[] = [
+  { kind: 'tasks-today', name: 'Tasks today', description: 'Your real tasks and due counts from Pocket Tasks. Dates follow your Tasks time zone.', category: 'Your apps', symbol: '☑', tone: 'sage', sizes: ['small', 'medium', 'large'], initial: 'medium' },
+  { kind: 'habit-progress', name: 'Habit progress', description: 'Your scheduled habits and today’s check-ins from Pocket Habits.', category: 'Your apps', symbol: '◉', tone: 'lavender', sizes: ['small', 'medium', 'large'], initial: 'medium' },
+  { kind: 'meal-plan', name: 'Meal plan', description: 'What you have planned for today in Pocket Kitchen.', category: 'Your apps', symbol: '♧', tone: 'peach', sizes: ['small', 'medium', 'large'], initial: 'medium' },
+  { kind: 'recent-notes', name: 'Recent notes', description: 'Pick up a thought from your latest Pocket Notes documents.', category: 'Your apps', symbol: '✎', tone: 'butter', sizes: ['small', 'medium', 'large'], initial: 'medium' },
   { kind: 'clock', name: 'Clock', description: 'Your time, or somewhere you love. Analog and digital faces with a choice of time zone.', category: 'Everyday', symbol: '◷', tone: 'cream', sizes: ['small', 'medium'], initial: 'small' },
   { kind: 'calendar', name: 'Calendar', description: 'A little perspective on the month. A date calendar, without appointments or account setup.', category: 'Everyday', symbol: '▦', tone: 'paper', sizes: ['small', 'medium', 'large'], initial: 'small' },
   { kind: 'focus', name: 'Focus', description: 'Start a quiet session, pause it, and come back when you’re ready. Uses your existing focus timer.', category: 'Everyday', symbol: '◈', tone: 'sage', sizes: ['small', 'medium', 'large'], initial: 'medium' },

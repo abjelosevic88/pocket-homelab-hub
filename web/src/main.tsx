@@ -11,6 +11,8 @@ import Login from './pages/Login'
 import HomePage from './pages/Home'
 import LibraryPage from './pages/Library'
 import ActivityPage from './pages/Activity'
+import TodayPage from './pages/Today'
+import './daily.css'
 import SettingsPage from './pages/Settings'
 
 function Gate({ children }: { children: React.ReactNode }) {
@@ -30,6 +32,7 @@ function App() {
       <Route element={<Gate><Layout /></Gate>}>
         <Route path="/" element={<HomePage />} />
         <Route path="/app/:key" element={null} />
+        <Route path="/today" element={<TodayPage />} />
         <Route path="/apps" element={<LibraryPage />} />
         <Route path="/activity" element={<ActivityPage />} />
         <Route path="/settings" element={<SettingsPage />} />

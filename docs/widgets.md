@@ -1,11 +1,15 @@
 # Personal home widgets
 
-Open Home → **Add widgets** to browse 15 kinds. Choose a size in the live preview, then add. Widgets with personal content open their editor immediately. **Edit home** exposes drag handles, size selectors, customization and removal. Handles work with mouse and touch; arrow keys move one position, Home/End move first/last, and explicit earlier/later buttons provide an alternative. Grid order follows reading order across desktop, tablet and phone layouts.
+Open Home → **Add widgets** to browse 19 kinds. Choose a size in the live preview, then add. Widgets with personal content open their editor immediately. **Edit home** exposes drag handles, size selectors, customization and removal. Handles work with mouse and touch; arrow keys move one position, Home/End move first/last, and explicit earlier/later buttons provide an alternative. Grid order follows reading order across desktop, tablet and phone layouts.
 
 Each account can have up to 24 widgets, including multiple copies of a kind. A clock for home and another for family abroad, for example, have independent titles and time zones. Home options can hide the spaces or app grid; the library and search remain available. Removing all widgets deliberately leaves an empty board. Restore starter widgets is reversible with the current session’s undo action. Undo restores the immediately preceding widget layout and contents. Making a subsequent widget edit clears that undo to protect newer changes.
 
 | Widget | Source and behavior |
 | --- | --- |
+| Tasks today | Live personal Tasks due counts and next tasks; app time zone. |
+| Habit progress | Personal scheduled habits and check-ins for the browser’s local date. |
+| Meal plan | Personal Kitchen plan for the browser’s local date. |
+| Recent notes | Recent personal Notes titles; full note content is not read. |
 | Clock | Device time; analog/digital; optional IANA time zone; follows the 24-hour preference. |
 | Calendar | Local month calendar with previous/next/today navigation. No appointments integration. |
 | Focus | Existing account-scoped browser timer; start, pause and resume from Home or open the focus room. |
@@ -26,4 +30,4 @@ Widget definitions, sizes and configuration types live in `web/src/lib/widgets.t
 
 Layout and contents use the existing per-person `/api/v1/prefs` endpoint (`home_widgets`, `home_show_spaces`, `home_show_apps`). The preference payload limit is 256 KiB to accommodate full checklists in multibyte scripts. No migration or shared customer-content table is introduced. Saving is debounced and serialized; failures preserve pending edits and expose retry, refresh cannot overwrite pending edits, and sign-out waits for successful saving. A browser departure with pending changes prompts before leaving where supported. Like other preferences, concurrent edits from separate devices are last-write-wins; this is not collaborative document editing.
 
-Widget layout syncs through the account; recent apps and the focus timer remain browser-local. Activity uses the home screen’s shared refresh; widgets do not independently poll services. Other widgets derive data from the current launcher. The shared clock updates every 15 seconds. No weather, appointment, task-count or storage figures are fabricated. Rich app-data widgets require per-person app contracts before being added.
+Widget layout syncs through the account; recent apps and the focus timer remain browser-local. Activity uses the home screen’s shared refresh; widgets do not independently poll services. The four connected widgets use the shared Today refresh; remaining app widgets derive data from the current launcher. See [Today and capture](daily-and-capture.md). The shared clock updates every 15 seconds. No weather, appointment or storage figures are fabricated. Task figures come from the real personal Tasks API. Further integrations require per-person app contracts.

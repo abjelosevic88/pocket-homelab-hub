@@ -119,6 +119,8 @@ func (s *Server) Router() http.Handler {
 
 			r.Get("/launcher", s.handleLauncher)
 			r.Get("/activity", s.handleActivity)
+			r.Get("/daily", s.handleDaily)
+			r.Post("/capture", s.handleCapture)
 			r.Get("/prefs", s.handleGetPrefs)
 			r.Put("/prefs", s.handlePutPrefs)
 			r.Get("/system", s.handleSystemInfo)

@@ -175,7 +175,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ⌘K / Ctrl-K opens the palette; Escape closes whatever is open
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(v => !v) }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(v => !v) }
       if (e.key === 'Escape') { setPalette(false); setSheet(null); setEditing(false) }
     }
     window.addEventListener('keydown', onKey)

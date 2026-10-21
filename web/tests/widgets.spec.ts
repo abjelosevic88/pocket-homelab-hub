@@ -3,11 +3,11 @@ import { WIDGETS, DEFAULT_WIDGETS } from '../src/lib/widgets'
 
 const widget = (kind: string, config = {}, size = 'medium') => ({ id: `test-${kind}`, kind, size, config })
 
-test('gallery offers all 15 widgets with live size previews and saves a personal note', async ({ page, harness }) => {
+test('gallery offers all widget types with live size previews and saves a personal note', async ({ page, harness }) => {
   await page.goto(origin)
   await expect(page.locator('.widget-grid .home-widget')).toHaveCount(8)
   await page.getByRole('button', { name: 'Add widgets' }).click()
-  await expect(page.locator('.widget-choices>button')).toHaveCount(15)
+  await expect(page.locator('.widget-choices>button')).toHaveCount(WIDGETS.length)
   await page.getByRole('searchbox', { name: 'Search widgets' }).fill('note')
   await page.locator('.widget-choices>button').filter({ hasText: 'Quick note' }).click()
   await page.getByRole('button', { name: 'large', exact: true }).click()
@@ -126,7 +126,7 @@ test('all widget kinds render on mobile, photo errors recover and the gallery tr
   harness.prefs = { home_widgets: WIDGETS.map(w => widget(w.kind, {}, w.initial)), home_show_apps: false, home_show_spaces: false }
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message))
   await page.goto(origin)
-  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(15)
+  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(WIDGETS.length)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByRole('button', { name: 'Add your own photo' }).click()
   await page.getByLabel('Image address').fill('http://images.test/picture.jpg')

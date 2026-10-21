@@ -9,11 +9,13 @@ import { AppSheet } from './AppSheet'
 import { Palette } from './Palette'
 import { PersonalProvider } from '../lib/personal-context'
 import { AppWorkspace } from './experience/AppWorkspace'
+import { DailyProvider, capture } from '../lib/daily-context'
+import { QuickCapture } from './experience/QuickCapture'
 import { FocusSession } from './experience/FocusSession'
 
 export default function Layout() {
   const { user } = useApp()
-  return <PersonalProvider key={user?.id} userId={user?.id || 0}><Desktop /></PersonalProvider>
+  return <PersonalProvider key={user?.id} userId={user?.id || 0}><DailyProvider><Desktop /></DailyProvider></PersonalProvider>
 }
 
 function Desktop() {
@@ -37,12 +39,12 @@ function Desktop() {
       <header className="topbar">
         <div className="topbar-left">
           <div className="box-name"><span className="brand-mark">p.</span>{box}<span className="brand-edition">YOUR PERSONAL WORLD</span></div>
-          <nav className="main-nav" aria-label="Main navigation"><NavLink to="/" end>Home</NavLink><NavLink to="/apps">Apps</NavLink><NavLink to="/activity">Activity</NavLink></nav>
+          <nav className="main-nav" aria-label="Main navigation"><NavLink to="/" end>Home</NavLink><NavLink to="/today">Today</NavLink><NavLink to="/apps">Apps</NavLink><NavLink to="/activity">Activity</NavLink></nav>
         </div>
         <button className="searchpill" onClick={() => setPalette(true)} aria-label="Search apps or intentions">
           <Search /><span>What would you like to do?</span><kbd>⌘K</kbd>
         </button>
-        <div className="topbar-right">
+        <div className="topbar-right"><button className="quick-capture-button" onClick={() => capture()} aria-label="Quick capture" title="Quick capture · Ctrl/⌘ Shift K">＋<span> Capture</span></button>
           <div className="clock" title={now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}>
             <span className="time">{clock(now, !!prefs.clock24)}</span>
             <span className="date">{now.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
@@ -53,7 +55,7 @@ function Desktop() {
 
       <main className="desk-main" hidden={inApp}><Outlet /></main>
       <AppWorkspace />
-      <FocusSession />
+      <FocusSession /><QuickCapture />
       {prefsError && <div className="save-notice" role="alert">Your changes haven’t saved yet.<button onClick={retryPrefs}>Try again</button></div>}
 
       <nav className="dock" aria-label="Dock" hidden={inApp}>

@@ -55,3 +55,5 @@ pocket-hub                        start the server (default)
 pocket-hub backup [-o FILE]       write a consistent SQLite backup
 pocket-hub version
 ```
+
+`GET /api/v1/daily?date=YYYY-MM-DD` returns personal app summaries and capture destinations. `POST /api/v1/capture` saves a task, note or journal moment with a per-user request ID. See [Today and capture](daily-and-capture.md) for the adapter boundaries and receipt behavior.

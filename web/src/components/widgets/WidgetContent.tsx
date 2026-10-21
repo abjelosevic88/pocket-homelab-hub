@@ -6,6 +6,7 @@ import { spacesFor, spaceTiles, intentHints, searchApps } from '../../lib/experi
 import { eventTitle, humanTopic, tileForTopic, timeAgo, uptime } from '../../lib/format'
 import { daysUntil, validImageURL, widgetName, type HomeWidget, type WidgetConfig } from '../../lib/widgets'
 import type { Activity, Tile } from '../../lib/types'
+import { ConnectedWidget } from './ConnectedWidget'
 import { AppIcon } from '../AppIcon'
 
 export type WidgetData = { now: Date; activity: Activity | null; activityError: boolean }
@@ -20,6 +21,7 @@ export function WidgetContent({ widget: w, data, configure, update }: Props) {
   const appButtons = (apps: Tile[], limit = small ? 4 : large ? 12 : 6) => apps.length ? <div className="w-apps">{apps.slice(0, limit).map(t => <button key={t.key} onClick={() => open(t)} title={t.name}><AppIcon t={t} size={38} /><span>{t.name.replace(/^Pocket /, '')}</span></button>)}</div> : <WidgetEmpty text="Your apps will appear here." />
   const title = <div className="w-title">{name}</div>
   switch (w.kind) {
+    case 'tasks-today': case 'habit-progress': case 'meal-plan': case 'recent-notes': return <ConnectedWidget widget={w} />
     case 'clock': {
       let timezone = w.config.timezone || undefined
       try { new Intl.DateTimeFormat(undefined, { timeZone: timezone }).format(now) } catch { timezone = undefined }

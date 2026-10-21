@@ -11,3 +11,5 @@ deploy
 !.env.example
 /pocket-hub
 dist
+
+web/test-results
