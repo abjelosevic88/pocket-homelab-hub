@@ -7,6 +7,8 @@ import { AppIcon } from '../components/AppIcon'
 import { Glass, Spinner } from '../components/ui'
 import { Check, Refresh } from '../components/icons'
 import { HomeExperience } from '../components/experience/HomeExperience'
+import { Brand } from '../components/Brand'
+import { HomeDailyOverview } from './Today'
 import { WidgetBoard } from '../components/widgets/WidgetBoard'
 import { spacesFor, spaceTiles } from '../lib/experience'
 
@@ -35,12 +37,12 @@ export default function HomePage() {
 
   return (
     <div className="home">
-      <HomeExperience><Link className="home-today-link" to="/today"><span>✳</span><div><strong>Your day, already together.</strong><small>Tasks, habits, meals and notes from your connected apps.</small></div><span>Open Today ↗</span></Link><WidgetBoard activity={activity} activityError={activityError} /></HomeExperience>
-      {prefs.home_show_apps !== false && <section id="space-apps" className="home-apps">
+      <HomeExperience><HomeDailyOverview /><WidgetBoard activity={activity} activityError={activityError} /></HomeExperience>
+      {prefs.home_show_apps === true && <section id="space-apps" className="home-apps">
       <div className="section-heading"><div><div className="eyebrow">YOUR EVERYDAY, ONE TAP AWAY</div><h2>{activeSpace?.name || 'All your possibilities.'}<span className="heading-count">{selected.length}</span></h2></div><div className="row">{activeSpace && <button className="text-button" onClick={() => setPrefs({ active_space: 'all' })}>All apps</button>}<Link className="text-button" to="/apps">App library ↗</Link></div></div>
       <div className="grid-tools">
         {editing ? <button className="btn small on" onClick={() => setEditing(false)}><Check /> Done</button> : <button className="btn small ghost" onClick={() => setEditing(true)}>Edit layout</button>}
-        <button className="btn small ghost sq" onClick={reload} title="Refresh"><Refresh /></button>
+        <button className="btn small ghost sq" onClick={reload} title="Refresh apps"><Refresh /></button>
         {loading && <Spinner />}
       </div>
 
@@ -53,7 +55,7 @@ export default function HomePage() {
       {activeSpace && selected.length === 0 && <div className="empty">No apps in this space yet. Try another space or create your own.</div>}
       {!activeSpace && selected.length > 12 && !editing && <button className="show-more" onClick={() => setShowAll(v => !v)}>{showAll ? 'Show a little less ↑' : `Explore all ${selected.length} apps ↓`}</button>}
       </section>}
-      <footer className="home-footer"><span className="brand-mark">p.</span><span>A little box. A world of possibilities.</span><Link to="/settings">Make it yours ↗</Link></footer>
+      <footer className="home-footer"><Brand compact /><span>Your world, close to home.</span><Link to="/settings">Make it yours ↗</Link></footer>
       {tiles.length === 0 && <Glass className="empty">No apps in your profile yet. Ask the box owner to add you to some services in Pocket Core.</Glass>}
     </div>
   )
@@ -116,7 +118,7 @@ function Connect({ kind, name, error, onRetry }: { kind: 'reconnect' | 'unconfig
   return (
     <div className="center">
       <Glass className="connect">
-        <img src="/favicon.svg" alt="" width={64} height={64} />
+        <img src="/pocket-ember.png" alt="" width={64} height={64} />
         {kind === 'reconnect' && <>
           <h2>Welcome to your Pocket Box</h2>
           <p>Sign in to bring your apps and personal spaces together.</p>

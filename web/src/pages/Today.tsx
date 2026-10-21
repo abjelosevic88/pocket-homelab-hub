@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../lib/app-context'
 import { useDaily, capture, type DailySource } from '../lib/daily-context'
 import { AppIcon } from '../components/AppIcon'
+import { Refresh } from '../components/icons'
 
 export const dailyNames: Record<string, string> = { tasks: 'Make room for what matters.', habits: 'Small things, adding up.', kitchen: 'Something good on the table.', notes: 'Pick up a thought.' }
 export const dailyEmpty: Record<string, string> = { tasks: 'No tasks to show here. Open Tasks for your complete lists.', habits: 'No habits scheduled for this day.', kitchen: 'No meals planned for this day yet.', notes: 'Your recent notes will appear here.' }
@@ -11,18 +12,18 @@ function readableDetail(value: string) {
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + (value.includes('T') ? ` · ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` : '')
 }
-export function DailyCard({ source }: { source: DailySource }) {
+export function DailyCard({ source, compact = false }: { source: DailySource; compact?: boolean }) {
   const { allTiles, open } = useApp()
   const tile = allTiles.find(t => t.key === source.app_key)
   if (!tile) return null
-  return <article className={`daily-card daily-${source.kind}`} aria-label={`${source.name} summary`}>
+  return <article className={`daily-card daily-${source.kind} ${compact ? 'daily-compact' : ''}`} aria-label={`${source.name} summary`}>
     <div className="daily-card-heading"><div><AppIcon t={tile} size={32} /><span>{source.name}</span></div><button className="text-button" onClick={() => open(tile)}>Open app ↗</button></div>
-    <h2>{dailyNames[source.kind]}</h2>
+    <h2>{compact ? ({ tasks: 'On your list', habits: 'Your rhythm', kitchen: 'At your table', notes: 'On your mind' } as Record<string, string>)[source.kind] : dailyNames[source.kind]}</h2>
     {source.state !== 'ready' ? <p className="daily-source-error">{source.message || 'This app couldn’t be refreshed.'}</p> : <>
       {source.metrics.length > 0 && <div className="daily-metrics">{source.metrics.map(m => <div key={m.label}><strong>{m.value}</strong><span>{m.label}</span></div>)}</div>}
-      <div className="daily-items">{source.items.map(item => <button key={item.id} onClick={() => open(tile)}><span className={`daily-item-mark ${item.done ? 'done' : ''}`}>{item.done ? '✓' : source.kind === 'notes' ? '✎' : '○'}</span><span><strong>{item.title}</strong>{item.detail && <small>{readableDetail(item.detail)}</small>}</span><span>↗</span></button>)}</div>
+      <div className="daily-items">{(compact ? source.items.slice(0, 2) : source.items).map(item => <button key={item.id} onClick={() => open(tile)}><span className={`daily-item-mark ${item.done ? 'done' : ''}`}>{item.done ? '✓' : source.kind === 'notes' ? '✎' : '○'}</span><span><strong>{item.title}</strong>{item.detail && <small>{readableDetail(item.detail)}</small>}</span><span>↗</span></button>)}</div>
       {!source.items.length && <p className="daily-empty">{dailyEmpty[source.kind]}</p>}
-      {source.message && <p className="daily-footnote">{source.message}</p>}
+      {!compact && source.message && <p className="daily-footnote">{source.message}</p>}
     </>}
   </article>
 }
@@ -36,4 +37,14 @@ export default function TodayPage() {
     {!error && data && !sources.length && <div className="daily-error"><h2>A little room to grow.</h2><p>Tasks, Habits, Kitchen and Notes will bring your day here when they’re connected to your profile.</p><Link className="btn" to="/apps">Explore your apps</Link></div>}
     {data && <p className="daily-refresh-note">Refreshed {new Date(data.refreshed_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} · Personal to your account · Updates while this window is active</p>}
   </div>
+}
+
+export function HomeDailyOverview() {
+  const { data, loading, error, refresh } = useDaily()
+  const { allTiles, reload } = useApp()
+  const sources = (data?.sources || []).filter(s => allTiles.some(t => t.key === s.app_key))
+  return <section className="home-daily" aria-label="Your day at a glance">
+    <div className="section-heading"><div><div className="eyebrow">IN REACH</div><h2>Your day at a glance.</h2></div><div className="row"><button className="iconbtn" aria-label="Refresh" title="Refresh your home" disabled={loading} onClick={() => { void refresh(); void reload() }}><Refresh /></button><Link className="text-button" to="/today">See your day ↗</Link></div></div>
+    {error ? <div className="home-daily-empty" role="alert"><p>Your day couldn’t refresh. Your apps are still available in the library.</p><button className="btn small" onClick={refresh}>Try again</button></div> : loading && !data ? <p role="status">Gathering your day…</p> : sources.length ? <div className="home-daily-grid">{sources.map(source => <DailyCard key={source.app_key} source={source} compact />)}</div> : <div className="home-daily-empty"><div><strong>Room for your everyday.</strong><p>Your connected tasks, habits, meals and notes will come together here.</p></div><Link className="btn small" to="/apps">Explore your apps ↗</Link></div>}
+  </section>
 }

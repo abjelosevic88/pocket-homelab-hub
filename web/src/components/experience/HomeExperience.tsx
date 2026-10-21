@@ -3,16 +3,15 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../../lib/app-context'
 import { usePersonal } from '../../lib/personal-context'
 import { spacesFor, spaceTiles, type Space } from '../../lib/experience'
-import { greeting, timeAgo, eventTitle, humanTopic, tileForTopic } from '../../lib/format'
+import { timeAgo, eventTitle, humanTopic, tileForTopic } from '../../lib/format'
 import type { Activity } from '../../lib/types'
 import { AppIcon } from '../AppIcon'
-import { Search } from '../icons'
-import { Orbit } from './Orbit'
+import { capture } from '../../lib/daily-context'
 import { SpaceEditor } from './SpaceEditor'
 import { Modal, OverlayPresence } from '../ui'
 
 export function HomeExperience({ children }: { children?: ReactNode }) {
-  const { user, tiles, prefs, setPrefs, setPalette, open } = useApp()
+  const { user, tiles, prefs, setPrefs, open } = useApp()
   const { recent, clearRecent } = usePersonal()
   const [editor, setEditor] = useState<Space | 'new' | null>(null)
   const [guide, setGuide] = useState(false)
@@ -20,19 +19,14 @@ export function HomeExperience({ children }: { children?: ReactNode }) {
   const visits = recent.map(v => ({ ...v, tile: tiles.find(t => t.key === v.key) })).filter(v => v.tile).slice(0, 5)
   const first = (user?.name || '').split(/\s/)[0]
   return <>
-    <section className={`home-hero ${children ? 'widget-hero' : ''}`}>
-      <div className="hero-copy">
-        <div className="eyebrow hero-eyebrow"><span className="welcome-line" />{greeting()}{first ? `, ${first}` : ''}</div>
-        <h1>Your world.<br /><em>A little closer.</em></h1>
-        <p>A place for your ideas, your everyday,<br className="desktop-break" /> and everything you love coming home to.</p>
-        <div className="hero-actions"><button className="btn hero-search" onClick={() => setPalette(true)}><Search />What would you like to do?<span>↗</span></button><button className="text-button" onClick={() => setGuide(true)}>Make yourself at home <span>↗</span></button></div>
-        <div className="hero-bottom"><span className="dot ok" />YOUR POCKET BOX<span className="hero-divider" />{tiles.length} apps to make it yours</div>
-      </div>
-      {!children && <Orbit />}
-    </section>
-    {!children && visits.length > 0 && <section className="recent-strip" aria-label="Recently opened apps"><span className="eyebrow">PICK UP AGAIN</span><div className="recent-apps">{visits.map(v => <button key={v.key} onClick={() => open(v.tile!)} title={`Opened ${timeAgo(new Date(v.at).toISOString())}`}><AppIcon t={v.tile!} size={26} />{v.tile!.name.replace(/^Pocket /, '')}<span>↗</span></button>)}</div><button className="text-button recent-clear" onClick={clearRecent} title="Clear recently opened apps in this browser">Clear</button></section>}
+    <header className="pocket-welcome">
+      <div><div className="eyebrow">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div><h1>At home{first ? <>, <em>{first}.</em></> : '.'}</h1><p>Your day, your ideas, your little corner of everything.</p></div>
+      <button className="text-button welcome-guide-button" onClick={() => setGuide(true)}>Make yourself at home ↗</button>
+    </header>
+    <section className="pocket-capture-bar" aria-label="Quick actions"><span>Make a little room.</span><div><button onClick={() => capture('task')}>＋ Add a task</button><button onClick={() => capture('note')}>✎ Capture a note</button><button onClick={() => capture('moment')}>✧ Keep a moment</button></div></section>
+    {visits.length > 0 && <section className="recent-strip" aria-label="Recently opened apps"><span className="eyebrow">PICK UP AGAIN</span><div className="recent-apps">{visits.map(v => <button key={v.key} onClick={() => open(v.tile!)} title={`Opened ${timeAgo(new Date(v.at).toISOString())}`}><AppIcon t={v.tile!} size={26} />{v.tile!.name.replace(/^Pocket /, '')}<span>↗</span></button>)}</div><button className="text-button recent-clear" onClick={clearRecent} title="Clear recently opened apps in this browser">Clear</button></section>}
     {children}
-    {prefs.home_show_spaces !== false && <section className="spaces-section">
+    {prefs.home_show_spaces !== false && <section className="spaces-section" id="spaces">
       <div className="section-heading"><div><div className="eyebrow">CHANGE YOUR PACE</div><h2>A space for every part of your day.</h2></div><button className="text-button" onClick={() => setEditor('new')}>＋ Create a space</button></div>
       <div className="spaces-grid">{spaces.map((s, i) => {
         const apps = spaceTiles(s, tiles)

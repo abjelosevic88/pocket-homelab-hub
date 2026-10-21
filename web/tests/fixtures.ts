@@ -22,6 +22,8 @@ export const test = base.extend<{ harness: { prefs: Record<string, any>; saveFai
       const request = route.request(), url = new URL(request.url())
       if (url.origin !== origin) return route.fulfill({ contentType: 'text/html', body: `<html><body><h1>${url.hostname}</h1><label>Draft <input aria-label="Draft"></label><script>window.bootId = Math.random()</script></body></html>` })
       if (url.pathname === '/api/v1/auth/status') return route.fulfill({ json: { user: { ...user, id: state.userId }, authenticated: true, needs_setup: false, oidc: true } })
+      if (url.pathname === '/api/v1/system') return route.fulfill({ json: { version: '0.5.0', uptime_s: 120, core: { configured: true, registered: true, public_url: 'https://core.pocket.test' } } })
+      if (url.pathname === '/api/v1/auth/me') return route.fulfill({ json: { core_linked: true } })
       if (url.pathname === '/api/v1/launcher') return route.fulfill({ json: { core: 'ok', me: { ...user, id: state.userId }, prefs: state.prefs, apps: state.apps, box: { name: 'Pocket Box', apps_up: 6, apps_checked: 6 }, refresh_seconds: 45 } })
       if (url.pathname === '/api/v1/daily') return state.dailyFails ? route.fulfill({ status: 503, json: { error: 'Unavailable' } }) : route.fulfill({ json: state.daily })
       if (url.pathname === '/api/v1/capture') { const body = request.postDataJSON(); state.captures.push(body); return route.fulfill({ status: 201, json: { status: 'saved', app_key: body.app_key, kind: body.kind, id: 123 } }) }

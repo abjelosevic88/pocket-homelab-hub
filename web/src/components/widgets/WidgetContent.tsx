@@ -35,7 +35,7 @@ export function WidgetContent({ widget: w, data, configure, update }: Props) {
     }
     case 'calendar': return <Calendar widget={w} now={now} />
     case 'focus': return <>{title}<div className="w-focus-copy"><span>{focus.active ? remaining === 0 ? 'A little progress, made.' : focus.endsAt ? 'One thing at a time.' : 'Take your time.' : 'Make a little room.'}</span><strong className="w-focus-time">{timerLabel(focus.active ? remaining : 1500)}</strong>{!small && <p>{focus.active ? 'Your focus session stays with you in this browser.' : 'A clear mind. A little momentum.'}</p>}</div><div className="w-actions"><button className="w-button" onClick={() => !focus.active || remaining === 0 ? start(25) : focus.endsAt ? pause() : resume()}>{!focus.active || remaining === 0 ? 'Start focus' : focus.endsAt ? 'Pause' : 'Continue'}</button><button className="w-text-button" onClick={() => window.dispatchEvent(new Event('hub:focus'))} aria-label="Enter your focus room">↗</button></div></>
-    case 'favorites': return <>{title}{appButtons(dockTiles)}<span className="w-footnote">Pinned to your dock</span></>
+    case 'favorites': return <>{title}{appButtons(dockTiles)}<span className="w-footnote">Your favorite apps</span></>
     case 'recent': {
       const apps = recent.map(v => tiles.find(t => t.key === v.key)).filter((t): t is Tile => !!t)
       return <><div className="w-heading">{title}{apps.length > 0 && <button onClick={clearRecent} aria-label="Clear recently opened apps">×</button>}</div>{apps.length ? appButtons(apps) : <WidgetEmpty symbol="↺" text="Open an app and find it here next time." />}<span className="w-footnote">In this browser · just for you</span></>

@@ -13,11 +13,11 @@ test('intent search opens a matching app inside the workspace', async ({ page, h
 
 test('switching apps and returning Home retains app drafts and closes tabs', async ({ page, harness }) => {
   await page.goto(origin)
-  await page.locator('.appgrid').getByRole('button', { name: 'Pocket Notes', exact: true }).click()
+  await page.getByRole('button', { name: 'Open Pocket Notes', exact: true }).click()
   const notes = page.frameLocator('iframe[title="Pocket Notes"]')
   await notes.getByLabel('Draft').fill('Do not lose this idea')
   await page.getByRole('link', { name: 'Home', exact: true }).first().click()
-  await page.locator('.appgrid').getByRole('button', { name: 'Pocket Tasks', exact: true }).click()
+  await page.getByRole('button', { name: 'Open Pocket Tasks', exact: true }).click()
   await page.locator('.workspace-tab').getByRole('button', { name: 'Notes', exact: true }).click()
   await expect(notes.getByLabel('Draft')).toHaveValue('Do not lose this idea')
   await page.getByRole('button', { name: 'Close Pocket Notes' }).click()
@@ -76,14 +76,14 @@ test('focus sessions survive reload, pause, complete and stay private per accoun
   await expect(page.locator('.focus-mini')).toContainText('A little progress, made.')
   harness.userId = 8
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Your world. A little closer.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^At home/ })).toBeVisible()
   await expect(page.locator('.focus-mini')).toHaveCount(0)
 })
 
 test('mobile layout fits and unavailable apps do not create a frame', async ({ page, harness }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto(origin)
-  await expect(page.getByRole('heading', { name: 'Your world. A little closer.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^At home/ })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   await expect(page.getByRole('button', { name: 'Search apps or intentions' })).toBeVisible()
   await page.goto(origin + '/app/missing-999')

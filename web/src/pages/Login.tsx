@@ -26,7 +26,7 @@ export default function Login({ mode }: { mode: 'login' | 'setup' }) {
   const sso = mode === 'login' && status?.oidc
   const pwAllowed = status?.password_login !== false
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }))
-  const wp = wallpaper('midnight')
+  const wp = wallpaper('pocket-ember')
 
   return (
     <div className="desk login-desk" style={{ ['--accent' as string]: wp.accent }}>
@@ -34,9 +34,9 @@ export default function Login({ mode }: { mode: 'login' | 'setup' }) {
       <div className="wallpaper-noise" aria-hidden="true" />
       <div className="center">
         <Glass className="login">
-          <img src="/favicon.svg" alt="" width={72} height={72} className="login-logo" />
-          <h1>{'Pocket Box'}</h1>
-          <p className="muted">{mode === 'setup' ? 'Make yourself at home. Create your account.' : 'Your world. A little closer.'}</p>
+          <img src="/pocket-ember.png" alt="" width={72} height={72} className="login-logo" />
+          <div className="login-maker">POCKET HOMELAB</div><h1>Pocket Box</h1>
+          <p className="muted">{mode === 'setup' ? 'Make yourself at home. Create your account.' : 'Your everyday, close to home.'}</p>
           {sso && <a className="btn primary lg block" href={`${V1}/auth/oidc/start?next=${encodeURIComponent(from)}`}>Welcome back. Sign in</a>}
           {sso && pwAllowed && !showPw && <button className="btn link" onClick={() => setShowPw(true)}>or use a password</button>}
           {(!sso || showPw) && pwAllowed && (

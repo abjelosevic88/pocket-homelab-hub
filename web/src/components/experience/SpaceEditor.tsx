@@ -12,7 +12,7 @@ export function SpaceEditor({ space, onClose }: { space?: Space; onClose: () => 
   const [keys, setKeys] = useState(space?.apps || [])
   const save = () => {
     const entry = { id: space?.id || `space-${crypto.randomUUID()}`, name: name.trim(), color, apps: keys }
-    setPrefs(p => ({ ...p, spaces: [...(p.spaces || []).filter(s => s.id !== entry.id), entry], active_space: entry.id }))
+    setPrefs(p => ({ ...p, spaces: [...(p.spaces || []).filter(s => s.id !== entry.id), entry], active_space: entry.id, home_show_apps: true }))
     onClose()
   }
   return <Modal title={space ? 'Make this space yours' : 'A space for your kind of day'} onClose={onClose}>

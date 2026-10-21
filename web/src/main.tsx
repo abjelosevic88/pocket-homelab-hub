@@ -51,3 +51,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 import './widgets.css'
+
+import './pocket.css'

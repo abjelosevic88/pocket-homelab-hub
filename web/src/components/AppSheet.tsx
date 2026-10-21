@@ -56,7 +56,7 @@ export function AppSheet({ t, onClose }: { t: Tile; onClose: () => void }) {
       <div className="sheet-actions">
         <button className="btn primary" onClick={() => open(t)}>Open{t.open_url && t.open_url !== t.url ? ' · signed in' : ''}</button>
         <a className="btn" href={t.open_url || t.url} target="_blank" rel="noreferrer" title="Open in a new tab"><External /></a>
-        <button className={`btn ${pinned ? 'on' : ''}`} onClick={togglePin} title={pinned ? 'Remove from dock' : 'Pin to dock'}><Pin /> {pinned ? 'Pinned' : 'Pin'}</button>
+        <button className={`btn ${pinned ? 'on' : ''}`} onClick={togglePin} title={pinned ? 'Remove from favorites' : 'Add to favorites'}><Pin /> {pinned ? 'Pinned' : 'Pin'}</button>
         <button className={`btn ${hidden ? 'on' : ''}`} onClick={toggleHide} title={hidden ? 'Show on the home screen' : 'Hide from the home screen'}>{hidden ? <Eye /> : <EyeOff />} {hidden ? 'Hidden' : 'Hide'}</button>
         <span className="grow" />
         <button className="btn sq" onClick={() => move(-1)} title="Move earlier"><ChevL /></button>

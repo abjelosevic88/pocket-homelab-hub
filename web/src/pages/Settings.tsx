@@ -27,12 +27,12 @@ export default function SettingsPage() {
     <div className="page narrow">
       <header className="page-head"><div><h1>Settings</h1><p className="muted">Your home screen, your account, this box.</p></div></header>
 
-      <h2 className="sec-title">Wallpaper</h2>
+      <h2 className="sec-title">Home atmosphere</h2>
       <Glass className="panel">
         <div className="swatches">
           {WALLPAPERS.map(w => (
-            <button key={w.id} className={`swatch ${(prefs.wallpaper || 'midnight') === w.id && !prefs.wallpaper_url ? 'on' : ''}`} style={{ background: w.css }} onClick={() => setPrefs({ wallpaper: w.id, wallpaper_url: '' })} title={w.name}>
-              {(prefs.wallpaper || 'midnight') === w.id && !prefs.wallpaper_url && <Check />}<span className="swatch-name">{w.name}</span>
+            <button key={w.id} className={`swatch ${(prefs.wallpaper || 'pocket-ember') === w.id && !prefs.wallpaper_url ? 'on' : ''}`} style={{ background: w.css }} onClick={() => setPrefs({ wallpaper: w.id, wallpaper_url: '' })} title={w.name}>
+              {(prefs.wallpaper || 'pocket-ember') === w.id && !prefs.wallpaper_url && <Check />}<span className="swatch-name">{w.name}</span>
             </button>
           ))}
         </div>
@@ -47,7 +47,7 @@ export default function SettingsPage() {
         <Toggle label="24-hour clock" value={!!prefs.clock24} onChange={v => setPrefs({ clock24: v })} />
         <div className="row-between">
           <span className="toggle-label">Layout</span>
-          <button className="btn small" onClick={() => setPrefs({ order: [], dock: undefined, hidden: [] })}>Reset order, dock and hidden apps</button>
+          <button className="btn small" onClick={() => setPrefs({ order: [], dock: undefined, hidden: [] })}>Reset order, favorites and hidden apps</button>
         </div>
         {hidden.length > 0 && (
           <div className="hidden-list">
@@ -77,7 +77,7 @@ export default function SettingsPage() {
       <h2 className="sec-title">About</h2>
       <Glass className="panel">
         <dl className="facts">
-          <dt>Pocket Hub</dt><dd className="mono">v{(sys?.version || status?.version || '').replace(/^v/, '')}</dd>
+          <dt>Pocket Box</dt><dd className="mono">v{(sys?.version || status?.version || '').replace(/^v/, '')}</dd>
           <dt>Pocket Core</dt><dd>{sys?.core.configured ? <>{sys.core.registered ? 'registered' : 'registration pending'}{sys.core.error && <span className="muted"> · {sys.core.error}</span>} · <a href={sys.core.public_url} target="_blank" rel="noreferrer">open Core</a></> : 'not configured'}</dd>
           <dt>Source</dt><dd><a href="https://github.com/abjelosevic88/pocket-homelab-hub" target="_blank" rel="noreferrer">github.com/abjelosevic88/pocket-homelab-hub</a></dd>
         </dl>

@@ -86,7 +86,7 @@ test('checklists, date countdowns and clocks can be configured without leaving h
 })
 
 test('a deliberately empty home stays empty and section choices persist', async ({ page, harness }) => {
-  harness.prefs = { home_widgets: [widget('note')] }
+  harness.prefs = { home_widgets: [widget('note')], home_show_apps: true }
   await page.goto(origin)
   await page.getByRole('button', { name: 'Edit home', exact: true }).click()
   await page.getByRole('button', { name: 'Remove Quick note', exact: true }).click()
@@ -190,6 +190,7 @@ test('notes survive a failed save and edits made while an earlier save is in fli
   await page.getByLabel('Your note').fill('Keep this thought')
   await page.getByRole('button', { name: 'Save widget' }).click()
   await expect(page.getByRole('alert')).toContainText('haven’t saved')
+  expect((await page.getByRole('alert').boundingBox())!.height).toBeLessThan(100)
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
   await expect(page.getByRole('article', { name: 'Quick note widget' })).toContainText('Keep this thought')
   let release: () => void = () => {}, requested: () => void = () => {}
