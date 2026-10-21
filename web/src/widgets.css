@@ -71,11 +71,11 @@ button.w-footnote { cursor:pointer }
 .widget-large .w-apps { grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px; margin-top:20px; margin-bottom:auto }
 .w-events { display:flex; flex:1; flex-direction:column; gap:12px; margin-top:12px; overflow:hidden }
 .w-events button { display:flex; gap:10px; align-items:center; background:none; border:0; padding:0; text-align:left; cursor:pointer; min-width:0 }
-.w-events button>span:first-of-type { flex:1; min-width:0 }.w-events strong { display:block; font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }.w-events small { display:block; font-size:10px; opacity:.6; margin-top:3px }
+.w-events .w-event-copy { flex:1; min-width:0 }.w-events strong { display:block; font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }.w-events small { display:block; font-size:10px; opacity:.6; margin-top:3px }
 .w-space-name { font-size:20px; font-weight:500; margin:8px 0 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .w-shortcut { display:flex; align-items:center; gap:16px; flex:1; background:none; border:0; padding:12px 0; text-align:left; cursor:pointer; min-width:0 }
-.w-shortcut>span:first-of-type { flex:1; min-width:0 }.w-shortcut strong { display:block; font-size:18px; font-weight:500 }.w-shortcut small { font-size:12px; opacity:.6; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:8px }
-.widget-small .w-shortcut { flex-direction:column; justify-content:center; gap:10px }.widget-small .w-shortcut>span:first-of-type { flex:0 }.widget-small .w-shortcut>span:last-child { display:none }
+.w-shortcut .w-shortcut-copy { flex:1; min-width:0 }.w-shortcut strong { display:block; font-size:18px; font-weight:500 }.w-shortcut small { font-size:12px; opacity:.6; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:8px }
+.widget-small .w-shortcut { flex-direction:column; justify-content:center; gap:10px }.widget-small .w-shortcut .w-shortcut-copy { flex:0 }.widget-small .w-shortcut>span:last-child { display:none }
 .w-note-text { flex:1; overflow:auto; margin:12px 0 0; padding:0 3px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; background:none; border:0; text-align:left; font-size:17px; line-height:1.55; letter-spacing:-.3px; cursor:text }
 .widget-large .w-note-text { font-size:23px; line-height:1.6 }.widget-small .w-note-text { font-size:14px }
 .w-check-items { margin:10px 0 4px; display:flex; flex-direction:column; gap:8px; min-height:0; overflow:auto }

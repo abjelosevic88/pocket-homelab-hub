@@ -8,7 +8,7 @@ const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 export const origin = 'https://hub.pocket.test'
 const user = { id: 7, name: 'Alex', email: 'alex@example.test', role: 'member', created_at: '2026-01-01' }
 const tiles = ['notes', 'tasks', 'kitchen', 'habits', 'bookshelf', 'podcasts'].map((type, i) => ({ key: `${type}-${i}`, id: i, type, name: `Pocket ${type.charAt(0).toUpperCase() + type.slice(1)}`, pocket: true, status: 'ok', group: 'Pocket', icon: `/icons/pocket-${type}.svg`, url: `https://${type}.pocket.test/`, open_url: `https://${type}.pocket.test/` }))
-export const test = base.extend<{ harness: { prefs: Record<string, any>; saveFails: boolean; userId: number; apps: typeof tiles } }>({
+export const test = base.extend<{ harness: { prefs: Record<string, any>; saveFails: boolean; userId: number; apps: typeof tiles; activity: { events: any[]; scope: string } } }>({
   browser: [async ({}, use) => {
     let browser: Browser
     if (process.env.PLAYWRIGHT_CDP_URL) browser = await chromium.connectOverCDP(process.env.PLAYWRIGHT_CDP_URL)
@@ -17,13 +17,13 @@ export const test = base.extend<{ harness: { prefs: Record<string, any>; saveFai
     await browser.close()
   }, { scope: 'worker' }],
   harness: async ({ context }, use) => {
-    const state = { prefs: {} as Record<string, any>, saveFails: false, userId: 7, apps: [...tiles] }
+    const state = { prefs: {} as Record<string, any>, saveFails: false, userId: 7, apps: [...tiles], activity: { events: [] as any[], scope: 'mine' } }
     await context.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url())
       if (url.origin !== origin) return route.fulfill({ contentType: 'text/html', body: `<html><body><h1>${url.hostname}</h1><label>Draft <input aria-label="Draft"></label><script>window.bootId = Math.random()</script></body></html>` })
       if (url.pathname === '/api/v1/auth/status') return route.fulfill({ json: { user: { ...user, id: state.userId }, authenticated: true, needs_setup: false, oidc: true } })
       if (url.pathname === '/api/v1/launcher') return route.fulfill({ json: { core: 'ok', me: { ...user, id: state.userId }, prefs: state.prefs, apps: state.apps, box: { name: 'Pocket Box', apps_up: 6, apps_checked: 6 }, refresh_seconds: 45 } })
-      if (url.pathname === '/api/v1/activity') return route.fulfill({ json: { events: [], scope: 'mine' } })
+      if (url.pathname === '/api/v1/activity') return route.fulfill({ json: state.activity })
       if (url.pathname === '/api/v1/prefs') {
         if (request.method() === 'PUT') {
           if (state.saveFails) return route.fulfill({ status: 503, json: { error: 'offline' } })

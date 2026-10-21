@@ -225,3 +225,18 @@ test('invalid saved widget definitions cannot break the customer home', async ({
   await expect(page.getByRole('button', { name: 'Write a note' })).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('populated activity and app shortcuts keep icons square and route into apps', async ({ page, harness }) => {
+  harness.prefs = { home_widgets: [widget('activity'), widget('shortcut', { appKey: 'notes-0' })] }
+  harness.activity = { scope: 'mine', events: [{ id: '1', topic: 'notes.created', created_at: new Date().toISOString(), payload: { title: 'A new idea' } }, { id: '2', topic: 'unavailable.created', payload: { title: 'Do not show unavailable apps' } }] }
+  await page.goto(origin)
+  const activity = page.getByRole('article', { name: 'Activity widget' })
+  await expect(activity).toContainText('A new idea')
+  await expect(activity).not.toContainText('Do not show unavailable apps')
+  const activityIcon = await activity.locator('.ico').boundingBox()
+  expect(activityIcon!.width).toBe(28); expect(activityIcon!.height).toBe(28)
+  const shortcutIcon = await page.getByRole('article', { name: 'App shortcut widget' }).locator('.ico').boundingBox()
+  expect(shortcutIcon!.width).toBe(64); expect(shortcutIcon!.height).toBe(64)
+  await activity.getByRole('button', { name: /A new idea/ }).click()
+  await expect(page).toHaveURL(/\/app\/notes-0$/)
+})
