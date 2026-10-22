@@ -1,6 +1,6 @@
 import { test, expect, origin } from './fixtures'
 
-test('Pocket Box home brings daily content and personal widgets together without changing preferences', async ({ page, harness }, testInfo) => {
+test('Pocket Box home puts apps first beside daily content and widgets without changing preferences', async ({ page, harness }, testInfo) => {
   harness.daily.sources = [
     {kind:'tasks',name:'Pocket Tasks',app_key:'tasks-1',state:'ready',metrics:[{label:'Today',value:3},{label:'Overdue',value:0}],items:[{id:1,title:'Book the weekend away'},{id:2,title:'Call mum'},{id:3,title:'Pack a bag'}]},
     {kind:'habits',name:'Pocket Habits',app_key:'habits-3',state:'ready',metrics:[{label:'Done',value:1},{label:'Scheduled',value:2}],items:[{id:4,title:'Get outside',done:true}]},
@@ -10,12 +10,13 @@ test('Pocket Box home brings daily content and personal widgets together without
   const before = structuredClone(harness.prefs)
   await page.goto(origin)
   await expect(page.getByRole('region', { name: 'Your day at a glance' })).toContainText('Book the weekend away')
-  await expect(page.locator('.home-daily .daily-items').first().locator('button')).toHaveCount(2)
-  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(8)
+  await expect(page.locator('.home-daily .daily-items').first().locator('button')).toHaveCount(3)
+  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(7)
   await expect(page.locator('.dock')).toHaveCount(0)
-  await expect(page.locator('.home-apps')).toHaveCount(0)
-  await expect(page.locator('.pocket-sidebar .pocket-brand img')).toHaveAttribute('src', '/pocket-box.png')
-  await expect.poll(() => page.locator('.pocket-sidebar .pocket-brand img').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(512)
+  await expect(page.locator('.home-apps .tile')).toHaveCount(6)
+  await expect(page.getByRole('status').filter({ hasText: 'Everything is running smoothly' })).toBeVisible()
+  await expect(page.locator('.sidebar .pocket-brand img')).toHaveAttribute('src', '/pocket-box.png')
+  await expect.poll(() => page.locator('.sidebar .pocket-brand img').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(512)
   expect(await page.locator('link[rel="icon"]').getAttribute('href')).toBe('/pocket-box-favicon.png?v=rounded')
   expect(harness.prefs).toEqual(before)
   await page.screenshot({ path: testInfo.outputPath('box-home-desktop.png'), fullPage: true })
@@ -34,7 +35,7 @@ test('Pocket Box home brings daily content and personal widgets together without
   expect(frame!.width).toBeLessThanOrEqual(320)
 })
 
-test('existing favorites, wallpaper, widgets and optional app grid survive the new shell', async ({ page, harness }) => {
+test('existing favorites, widgets and app grid survive the new shell', async ({ page, harness }) => {
   harness.prefs = { wallpaper:'dusk', dock:['kitchen-2','notes-0'], home_show_apps:true, home_widgets:[{id:'my-note',kind:'note',size:'large',config:{title:'Our home',note:'Keep the family plan'}}] }
   const before = structuredClone(harness.prefs)
   await page.goto(origin)
@@ -53,17 +54,17 @@ test('Pocket Box identity carries through library, settings, login and installab
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message))
   for (const path of ['/apps', '/settings']) {
     await page.goto(origin + path)
-    await expect(page.getByRole('heading', {name:path==='/apps'?'App library':'Settings',exact:true})).toBeVisible()
+    await expect(page.getByRole('heading', {name:path==='/apps'?'Apps':'Settings',exact:true})).toBeVisible()
     await page.screenshot({path:testInfo.outputPath(path.slice(1)+'.png'),fullPage:true})
   }
   const manifest = await page.evaluate(async () => (await fetch('/manifest.webmanifest')).json())
-  expect(manifest.theme_color).toBe('#171719')
+  expect(manifest.theme_color).toBe('#f4f5f7')
   expect(manifest.icons).toHaveLength(3)
   await context.route('**/api/v1/auth/status', route => route.fulfill({json:{authenticated:false,user:null,needs_setup:false,oidc:true,password_login:false}}))
   await page.goto(origin + '/login')
-  await expect(page.getByRole('heading', {name:'Pocket Box',exact:true})).toBeVisible()
+  await expect(page.getByRole('heading', {name:'Welcome home',exact:true})).toBeVisible()
   await expect(page.locator('.login-logo')).toHaveAttribute('src','/pocket-box.png')
-  await expect(page.getByRole('link', {name:'Welcome back. Sign in'})).toHaveAttribute('href',/auth\/oidc\/start/)
+  await expect(page.getByRole('link', {name:'Sign in',exact:true})).toHaveAttribute('href',/auth\/oidc\/start/)
   await page.screenshot({path:testInfo.outputPath('login.png')})
   await page.setViewportSize({width:390,height:844})
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

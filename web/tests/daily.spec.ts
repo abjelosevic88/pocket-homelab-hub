@@ -36,7 +36,7 @@ test('quick capture saves a task from inside another app without losing its draf
 
 test('note drafts survive closing capture and navigation; the shortcut opens only capture', async ({ page, harness }) => {
   await page.goto(origin + '/today')
-  await page.getByRole('button', { name: 'Capture a note', exact: false }).click()
+  await page.getByRole('button', { name: /Write a note/ }).click()
   await page.getByLabel('Note title').fill('A thought worth keeping')
   await page.getByLabel('Your note', { exact: true }).fill('Plan a trip with the family.')
   await page.keyboard.press('Escape')
@@ -57,7 +57,7 @@ test('journal capture uses the selected day and an available Day destination', a
   harness.apps.push({ ...harness.apps[0], id: 7, key: 'day-7', type: 'day', name: 'Pocket Day', url: 'https://day.pocket.test/', open_url: 'https://day.pocket.test/' })
   harness.daily.destinations.push({ app_key: 'day-7', kind: 'day', name: 'Pocket Day' })
   await page.goto(origin + '/today')
-  await page.getByRole('button', { name: 'Keep a moment', exact: false }).click()
+  await page.getByRole('button', { name: /Save a memory/ }).click()
   await page.getByLabel('Your moment').fill('A beautiful walk after dinner.')
   await page.getByLabel('Day to remember').fill('2026-10-20')
   await page.getByRole('button', { name: 'Save journal moment', exact: true }).click()
@@ -87,7 +87,7 @@ test('an uncertain capture keeps the same request identity when checking its rec
 test('unavailable connections preserve a draft and never invent summaries', async ({ page, harness }) => {
   harness.dailyFails = true
   await page.goto(origin + '/today')
-  await expect(page.getByRole('alert')).toContainText('couldn’t refresh')
+  await expect(page.getByRole('alert')).toContainText('couldn’t be loaded')
   await expect(page.locator('.daily-metrics')).toHaveCount(0)
   await page.getByRole('button', { name: 'Quick capture', exact: true }).click()
   await page.getByLabel('Task title').fill('Keep this while disconnected')

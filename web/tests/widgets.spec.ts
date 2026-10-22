@@ -5,7 +5,7 @@ const widget = (kind: string, config = {}, size = 'medium') => ({ id: `test-${ki
 
 test('gallery offers all widget types with live size previews and saves a personal note', async ({ page, harness }) => {
   await page.goto(origin)
-  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(8)
+  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(7)
   await page.getByRole('button', { name: 'Add widgets' }).click()
   await expect(page.locator('.widget-choices>button')).toHaveCount(WIDGETS.length)
   await page.getByRole('searchbox', { name: 'Search widgets' }).fill('note')
@@ -16,7 +16,7 @@ test('gallery offers all widget types with live size previews and saves a person
   await page.getByLabel('Widget title').fill('A little reminder')
   await page.getByLabel('Your note').fill('Call mum.\nMake time for a walk.')
   await page.getByRole('button', { name: 'Save widget' }).click()
-  await expect.poll(() => harness.prefs.home_widgets?.length).toBe(9)
+  await expect.poll(() => harness.prefs.home_widgets?.length).toBe(8)
   await page.reload()
   const note = page.getByRole('article', { name: 'A little reminder widget', exact: true })
   await expect(note).toContainText('Call mum.')
@@ -85,23 +85,18 @@ test('checklists, date countdowns and clocks can be configured without leaving h
   await expect(page.getByRole('article', { name: 'Clock widget' })).toContainText('Tokyo')
 })
 
-test('a deliberately empty home stays empty and section choices persist', async ({ page, harness }) => {
-  harness.prefs = { home_widgets: [widget('note')], home_show_apps: true }
+test('a deliberately empty home stays empty while apps stay on Home', async ({ page, harness }) => {
+  harness.prefs = { home_widgets: [widget('note')] }
   await page.goto(origin)
   await page.getByRole('button', { name: 'Edit home', exact: true }).click()
   await page.getByRole('button', { name: 'Remove Quick note', exact: true }).click()
-  await page.getByRole('button', { name: 'Home options' }).click()
-  await page.getByRole('switch').nth(0).click()
-  await page.getByRole('switch').nth(1).click()
-  await page.getByRole('button', { name: 'Close', exact: true }).click()
-  await expect.poll(() => harness.prefs.home_show_apps).toBe(false)
+  await expect.poll(() => harness.prefs.home_widgets?.length).toBe(0)
   await page.reload()
   await expect(page.locator('.home-widget')).toHaveCount(0)
-  await expect(page.locator('.home-apps')).toHaveCount(0)
-  await expect(page.locator('.spaces-section')).toHaveCount(0)
+  await expect(page.locator('.home-apps .tile')).toHaveCount(6)
   await page.getByRole('button', { name: 'Home options' }).click()
   await page.getByRole('button', { name: 'Restore starter widgets' }).click()
-  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(8)
+  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(7)
   await page.getByRole('button', { name: 'Undo layout change' }).click()
   await expect(page.locator('.widget-grid .home-widget')).toHaveCount(0)
 })
@@ -117,7 +112,7 @@ test('widget app shortcuts use the workspace and respect a revoked app', async (
   await expect(page.frameLocator('iframe').getByLabel('Draft')).toHaveValue('Widget opened this app')
   harness.apps = harness.apps.filter(a => a.type !== 'notes')
   await page.goto(origin)
-  await expect(page.getByRole('article', { name: 'App shortcut widget' })).toContainText('no longer in your profile')
+  await expect(page.getByRole('article', { name: 'App shortcut widget' })).toContainText('no longer on your account')
   await expect(page.getByRole('article', { name: 'Recently opened widget' }).getByRole('button', { name: /Notes/ })).toHaveCount(0)
 })
 
@@ -173,7 +168,7 @@ test('touch drag reorders widgets and respects the 24-widget limit', async ({ pa
 
 test('home and gallery visual review', async ({ page, harness }, testInfo) => {
   await page.goto(origin)
-  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(8)
+  await expect(page.locator('.widget-grid .home-widget')).toHaveCount(7)
   await page.screenshot({ path: testInfo.outputPath('widgets-desktop.png'), fullPage: true })
   await page.getByRole('button', { name: 'Add widgets' }).click()
   await page.screenshot({ path: testInfo.outputPath('widgets-gallery.png') })
@@ -212,7 +207,7 @@ test('notes survive a failed save and edits made while an earlier save is in fli
   release()
   await expect.poll(() => harness.prefs.home_widgets?.[0]?.config.note).toBe('The latest thought wins')
   await expect(page.getByRole('alert')).toHaveCount(0)
-  await expect(page.locator('.widget-save-status')).toHaveText('Personal to your account')
+  await expect(page.locator('.widget-save-status')).toHaveText('Little helpers for your day. Only you see them.')
   await page.reload()
   await expect(page.getByRole('article', { name: 'Quick note widget' })).toContainText('The latest thought wins')
 })
@@ -223,7 +218,7 @@ test('invalid saved widget definitions cannot break the customer home', async ({
   await page.goto(origin)
   await expect(page.locator('.widget-grid .home-widget')).toHaveCount(3)
   await expect(page.getByRole('checkbox', { name: 'Okay' })).not.toBeChecked()
-  await expect(page.getByRole('button', { name: 'Write a note' })).toBeVisible()
+  await expect(page.getByRole('article', { name: 'Quick note widget' }).getByRole('button', { name: /Write a note/ })).toBeVisible()
   expect(errors).toEqual([])
 })
 

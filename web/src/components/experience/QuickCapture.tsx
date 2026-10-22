@@ -3,6 +3,7 @@ import { useApp } from '../../lib/app-context'
 import { api, ApiError, V1 } from '../../lib/api'
 import { localDay, useDaily } from '../../lib/daily-context'
 import { Modal, OverlayPresence } from '../ui'
+import { Journal, Note, Task } from '../icons'
 
 type Kind = 'task' | 'note' | 'moment'
 const appKinds: Record<Kind, string> = { task: 'tasks', note: 'notes', moment: 'day' }
@@ -54,11 +55,11 @@ export function QuickCapture() {
   }
   const reset = () => { setDraft(fresh(draft.kind)); setSaved(null); setUncertain(false); setProblem('') }
   const openTarget = () => { const tile = allTiles.find(t => t.key === (saved?.app_key || target?.app_key)); if (tile) { setVisible(false); open(tile) } }
-  return <OverlayPresence>{visible && <Modal className="capture-sheet" title={saved ? 'A little less on your mind.' : 'Catch it while it’s here.'} onClose={() => setVisible(false)}>
-    {saved ? <div className="capture-success"><span>✓</span><h3>{names[saved.kind]} saved.</h3><p>It’s in {allTiles.find(t => t.key === saved.app_key)?.name || 'your app'}, under your account.</p><div className="row"><button className="btn primary" onClick={openTarget}>Open app</button><button className="btn" onClick={reset}>Capture another</button></div></div> : <form className="widget-form capture-form" onSubmit={e => { e.preventDefault(); void save() }}>
-      <p className="capture-intro">An idea, a thing to do, a moment to remember. Choose where it belongs.</p>
+  return <OverlayPresence>{visible && <Modal className="capture-sheet" title={saved ? 'Saved' : 'Add something new'} onClose={() => setVisible(false)}>
+    {saved ? <div className="capture-success"><span>✓</span><h3>{names[saved.kind]} saved.</h3><p>You’ll find it in {allTiles.find(t => t.key === saved.app_key)?.name || 'your app'}.</p><div className="row"><button className="btn primary" onClick={openTarget}>Open app</button><button className="btn" onClick={reset}>Add another</button></div></div> : <form className="widget-form capture-form" onSubmit={e => { e.preventDefault(); void save() }}>
+      <p className="capture-intro">A task to do, a note to keep, or a memory for your journal.</p>
       <fieldset disabled={busy || uncertain} className="capture-fields">
-        <div className="capture-kinds" aria-label="Capture type">{(['task', 'note', 'moment'] as Kind[]).map(kind => <button type="button" key={kind} aria-pressed={draft.kind === kind} onClick={() => change({ kind, app_key: '' })}>{kind === 'task' ? '☑' : kind === 'note' ? '✎' : '✧'} {names[kind]}</button>)}</div>
+        <div className="capture-kinds" aria-label="Capture type">{(['task', 'note', 'moment'] as Kind[]).map(kind => <button type="button" key={kind} aria-pressed={draft.kind === kind} onClick={() => change({ kind, app_key: '' })}>{kind === 'task' ? <Task size={18} /> : kind === 'note' ? <Note size={18} /> : <Journal size={18} />} {names[kind]}</button>)}</div>
         <div className={`capture-panel capture-panel-${draft.kind}`} key={draft.kind}>
         {draft.kind !== 'moment' && <label>{draft.kind === 'task' ? 'Task title' : 'Note title'}<input value={draft.title} maxLength={200} required={draft.kind === 'task'} placeholder={draft.kind === 'task' ? 'What needs doing?' : 'Give your idea a name…'} onChange={e => change({ title: e.target.value })} /></label>}
         <label className="capture-writing">{draft.kind === 'moment' ? 'Your moment' : draft.kind === 'task' ? 'Details (optional)' : 'Your note'}<textarea rows={5} maxLength={10000} required={draft.kind === 'moment'} value={draft.text} placeholder={draft.kind === 'moment' ? 'Something you want to remember…' : 'Keep the details here…'} onChange={e => change({ text: e.target.value })} /></label>
@@ -70,10 +71,10 @@ export function QuickCapture() {
         </div>
       </fieldset>
       <div className="capture-footer">
-      {!target && <div className="capture-connection"><p>{loading ? 'Connecting your apps…' : connectionError ? 'Your apps could not be loaded. Your draft is still here.' : `Connect ${draft.kind === 'task' ? 'Pocket Tasks' : draft.kind === 'note' ? 'Pocket Notes' : 'Pocket Day'} to your profile to save here.`}</p><button type="button" className="text-button" onClick={refresh}>Refresh connections</button></div>}
+      {!target && <div className="capture-connection"><p>{loading ? 'Connecting your apps…' : connectionError ? 'Your apps could not be loaded. Your draft is still here.' : `You need access to ${draft.kind === 'task' ? 'Pocket Tasks' : draft.kind === 'note' ? 'Pocket Notes' : 'Pocket Day'} to save this. Ask the person who looks after your box.`}</p><button type="button" className="text-button" onClick={refresh}>Refresh connections</button></div>}
       {problem && <p role="alert">{problem}</p>}
       <div className="widget-form-actions">{uncertain && <button type="button" className="btn" onClick={openTarget}>Check app</button>}<button className="btn primary" disabled={busy || !target || (!draft.title.trim() && !draft.text.trim())}>{busy ? 'Saving…' : uncertain ? 'Check saved status' : `Save ${names[draft.kind].toLowerCase()}`}</button></div>
-      <div className="capture-draft-note"><span>Closing keeps this draft while you stay signed in here. Reloading or signing out clears it.</span>{(draft.title || draft.text) && !busy && <button type="button" className="text-button" onClick={reset}>{uncertain ? 'Start a new capture' : 'Clear draft'}</button>}</div>
+      <div className="capture-draft-note"><span>If you close this, your draft is kept until you reload the page.</span>{(draft.title || draft.text) && !busy && <button type="button" className="text-button" onClick={reset}>{uncertain ? 'Start a new capture' : 'Clear draft'}</button>}</div>
       </div>
     </form>}
   </Modal>}</OverlayPresence>

@@ -93,7 +93,7 @@ export function Toggle({ value, onChange, label, help }: { value: boolean; onCha
 export function Pill({ status }: { status: string }) {
   if (!status) return null
   const ok = status === 'ok'
-  return <span className={`pill ${ok ? 'ok' : 'down'}`}><span className="dot" />{ok ? 'Online' : 'Down'}</span>
+  return <span className={`pill ${ok ? 'ok' : 'down'}`}><span className="dot" />{ok ? 'Running' : 'Not responding'}</span>
 }
 
 export function Glass({ children, className = '', ...rest }: React.HTMLAttributes<HTMLDivElement>) {

@@ -45,6 +45,10 @@ export type Box = {
 }
 
 export type Prefs = {
+  theme?: 'system' | 'light' | 'dark'
+  accent?: 'teal' | 'blue' | 'violet' | 'rose' | 'orange' | 'green'
+  text_size?: 'normal' | 'large'
+  welcome_done?: boolean
   home_widgets?: HomeWidget[]
   home_show_spaces?: boolean
   home_show_apps?: boolean

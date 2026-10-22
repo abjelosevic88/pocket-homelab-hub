@@ -39,7 +39,7 @@ for (const viewport of [{ width: 1440, height: 740 }, { width: 390, height: 844 
 test('overlays animate consistently, honor reduced motion and preserve page position', async ({ page, harness }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto(origin)
-  for (const name of ['Quick capture', 'Search apps or intentions', 'Add widgets', 'Create a space']) {
+  for (const name of ['Quick capture', 'Search apps or intentions', 'Add widgets', 'Create a collection']) {
     const trigger = page.getByRole('button', { name, exact: name === 'Quick capture' })
     await trigger.scrollIntoViewIfNeeded()
     const before = await page.evaluate(() => ({ x: scrollX, y: scrollY }))

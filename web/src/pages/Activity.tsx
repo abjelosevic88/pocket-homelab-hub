@@ -4,8 +4,9 @@ import { useApp } from '../lib/app-context'
 import { dayLabel, eventTitle, eventURL, humanTopic, timeAgo, tileForTopic } from '../lib/format'
 import type { Activity } from '../lib/types'
 import { AppIcon } from '../components/AppIcon'
-import { Glass, Spinner } from '../components/ui'
+import { Spinner } from '../components/ui'
 import { External, Refresh } from '../components/icons'
+import { friendlyName } from '../lib/catalog'
 
 export default function ActivityPage() {
   const { tiles } = useApp()
@@ -23,31 +24,31 @@ export default function ActivityPage() {
   return (
     <div className="page narrow">
       <header className="page-head">
-        <div><h1>Activity</h1><p className="muted">{a?.scope === 'box' ? 'Everything on the bus that concerns you or the household.' : a?.scope === 'mine' ? 'Your own doings in the Pocket apps that share them with the hub.' : 'Nothing to show yet.'}</p></div>
-        <button className="btn small ghost sq" onClick={load} title="Refresh">{busy ? <Spinner /> : <Refresh />}</button>
+        <div><h1>Activity</h1><p>{a?.scope === 'box' ? 'What has happened across your Pocket Box lately.' : 'What you have done in your apps lately.'}</p></div>
+        <button className="btn small" onClick={load} title="Refresh">{busy ? <Spinner /> : <Refresh />} Refresh</button>
       </header>
-      {a?.error && <Glass className="callout">{a.error}</Glass>}
+      {a?.error && <div className="callout">Some activity couldn’t be loaded right now.</div>}
       {!a && <div className="center"><Spinner /></div>}
-      {a && a.events.length === 0 && <Glass className="empty">Quiet. When apps publish something about you, it lands here.</Glass>}
+      {a && a.events.length === 0 && <div className="empty card-surface"><h3>No activity yet</h3><p className="muted" style={{ marginTop: 6 }}>As you add tasks, notes, recipes and more, they’ll show up here.</p></div>}
       {days.map(([d, list]) => (
         <section key={d} className="day">
           <h2 className="sec-title">{d}</h2>
-          <Glass className="feed">
+          <div className="feed card-surface">
             {list.map(e => {
               const t = tileForTopic(tiles, e.topic)
               const url = eventURL(e)
               return (
                 <div key={e.id} className="ev">
-                  {t ? <AppIcon t={t} size={34} /> : <span className="ico letter" style={{ width: 34, height: 34, fontSize: 14 }}>{e.topic.charAt(0).toUpperCase()}</span>}
+                  {t ? <AppIcon t={t} size={36} /> : <span className="ico letter" style={{ width: 36, height: 36, fontSize: 15, background: 'var(--surface-3)', color: 'var(--text-2)' }}>{e.topic.charAt(0).toUpperCase()}</span>}
                   <div className="ev-body">
-                    <div className="ev-line"><span className="ev-app">{t ? t.name.replace(/^Pocket /, '') : e.topic.split('.')[0]}</span><span className="ev-topic">{humanTopic(e.topic)}</span></div>
+                    <div className="ev-line"><span className="ev-app">{t ? friendlyName(t) : e.topic.split('.')[0]}</span><span>{humanTopic(e.topic)}</span></div>
                     {eventTitle(e) && <div className="ev-title">{eventTitle(e)}</div>}
                   </div>
-                  <div className="ev-side"><span className="ev-time">{timeAgo(e.created_at)}</span>{url && <a className="iconbtn" href={url} target="_blank" rel="noreferrer" title="Open"><External /></a>}</div>
+                  <div className="ev-side"><span className="ev-time">{timeAgo(e.created_at)}</span>{url && <a className="iconbtn" href={url} target="_blank" rel="noreferrer" title="Open" aria-label="Open"><External /></a>}</div>
                 </div>
               )
             })}
-          </Glass>
+          </div>
         </section>
       ))}
     </div>

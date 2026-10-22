@@ -2,12 +2,12 @@ import type { Prefs, Tile } from './types'
 
 export type Space = { id: string; name: string; description: string; color: string; symbol: string; types?: string[]; apps?: string[] }
 export const SPACES: Space[] = [
-  { id: 'focus', name: 'Make room to focus', description: 'A clear mind. A little momentum.', color: '#c1caff', symbol: '◈', types: ['tasks', 'notes', 'day', 'collaborator', 'docmost', 'excalidraw', 'drawio'] },
-  { id: 'unwind', name: 'Switch off a little', description: 'Something to watch, read or get lost in.', color: '#f6c99d', symbol: '☾', types: ['jellyfin', 'jellyseerr', 'navidrome', 'podcasts', 'bookshelf', 'audiobookshelf', 'immich', 'romm', 'kavita', 'calibre', 'calibre-web', 'pinepods'] },
-  { id: 'life', name: 'Life, a little lighter', description: 'The small things that make a good day.', color: '#b7e6c6', symbol: '✳', types: ['habits', 'kitchen', 'money', 'split', 'travel', 'garage', 'inventory', 'documents', 'invoicing', 'firefly'] },
+  { id: 'focus', name: 'Work & focus', description: 'Tasks, notes and documents.', color: '#c1caff', symbol: '◈', types: ['tasks', 'notes', 'day', 'collaborator', 'docmost', 'excalidraw', 'drawio'] },
+  { id: 'unwind', name: 'Relax', description: 'Movies, music, books and photos.', color: '#f6c99d', symbol: '☾', types: ['jellyfin', 'jellyseerr', 'navidrome', 'podcasts', 'bookshelf', 'audiobookshelf', 'immich', 'romm', 'kavita', 'calibre', 'calibre-web', 'pinepods'] },
+  { id: 'life', name: 'Everyday life', description: 'Home, money, food and trips.', color: '#b7e6c6', symbol: '✳', types: ['habits', 'kitchen', 'money', 'split', 'travel', 'garage', 'inventory', 'documents', 'invoicing', 'firefly'] },
 ]
 export function spacesFor(prefs: Prefs): Space[] {
-  return [...SPACES, ...(prefs.spaces || []).map(s => ({ ...s, description: 'A space you made your own.', symbol: '✧' }))]
+  return [...SPACES, ...(prefs.spaces || []).map(s => ({ ...s, description: 'A collection you made.', symbol: '✧' }))]
 }
 export function spaceTiles(space: Space, tiles: Tile[]): Tile[] {
   if (space.apps) return space.apps.map(k => tiles.find(t => t.key === k)).filter((t): t is Tile => !!t)

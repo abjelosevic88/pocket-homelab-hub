@@ -37,9 +37,9 @@ export function Palette({ onClose }: { onClose: () => void }) {
   }
   return (
     <div className={`backdrop top ${exiting ? 'exiting' : ''}`} inert={exiting} aria-hidden={exiting || undefined} onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div ref={dialog} className="palette" role="dialog" aria-modal="true" aria-label="Find an app or something to do">
-        <div className="palette-input"><Search /><input ref={ref} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey} placeholder="Try “plan dinner” or an app name" aria-label="Search apps or intentions" /><kbd>esc</kbd></div>
-        {!q && <div className="intent-hints">{intentHints(allTiles).map(h => <button key={h} onClick={() => setQ(h)}>{h} ↗</button>)}</div>}
+      <div ref={dialog} className="palette" role="dialog" aria-modal="true" aria-label="Search apps">
+        <div className="palette-input"><Search /><input ref={ref} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey} placeholder="Search apps, or describe what you want to do" aria-label="Search apps or intentions" /><kbd>esc</kbd></div>
+        {!q && <div className="intent-hints">{intentHints(allTiles).map(h => <button key={h} onClick={() => setQ(h)}>{h}</button>)}</div>}
         <div className="palette-list">
           {hits.map((t, k) => (
             <button key={t.key} className={`palette-row ${k === i ? 'active' : ''}`} onMouseEnter={() => setI(k)} onClick={() => open(t)}>
@@ -49,9 +49,9 @@ export function Palette({ onClose }: { onClose: () => void }) {
               {t.status === 'down' && <span className="dot down" />}
             </button>
           ))}
-          {hits.length === 0 && <div className="palette-empty">Nothing matches “{q}”. Try an app name or something like “plan my day”.</div>}
+          {hits.length === 0 && <div className="palette-empty">No apps match “{q}”. Try an app name, or something like “photos” or “plan dinner”.</div>}
         </div>
-        <div className="palette-foot"><span><kbd>↵</kbd> open</span><span><kbd>⌘↵</kbd> details</span><span><kbd>↑↓</kbd> move</span></div>
+        <div className="palette-foot"><span><kbd>↵</kbd> open</span><span><kbd>⌘↵</kbd> app details</span><span><kbd>↑↓</kbd> move</span></div>
       </div>
     </div>
   )

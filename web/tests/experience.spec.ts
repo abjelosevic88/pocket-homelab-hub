@@ -27,29 +27,29 @@ test('switching apps and returning Home retains app drafts and closes tabs', asy
   await expect(page).toHaveURL(origin + '/')
 })
 
-test('personal spaces save, reload, filter apps, and can be removed', async ({ page, harness }) => {
+test('personal collections save, reload, filter apps, and can be removed', async ({ page, harness }) => {
   await page.goto(origin)
-  await page.getByRole('button', { name: 'Create a space', exact: false }).click()
-  await page.getByLabel('Space name').fill('Sunday mornings')
+  await page.getByRole('button', { name: 'Create a collection', exact: false }).click()
+  await page.getByLabel('Collection name').fill('Sunday mornings')
   await page.locator('.space-picker label').filter({ hasText: 'Notes' }).click()
   await page.locator('.space-picker label').filter({ hasText: 'Bookshelf' }).click()
-  await page.getByRole('button', { name: 'Save space', exact: true }).click()
+  await page.getByRole('button', { name: 'Save collection', exact: true }).click()
   await expect.poll(() => harness.prefs.spaces?.length).toBe(1)
   await page.reload()
   await expect(page.locator('.home-apps .tile')).toHaveCount(2)
   await expect(page.locator('.home-apps h2')).toContainText('Sunday mornings')
   await page.getByRole('button', { name: 'Edit Sunday mornings' }).click()
-  await page.getByRole('button', { name: 'Remove space', exact: true }).click()
+  await page.getByRole('button', { name: 'Remove collection', exact: true }).click()
   await expect.poll(() => harness.prefs.spaces?.length).toBe(0)
 })
 
 test('failed preference saves remain visible, survive refresh, and can retry', async ({ page, harness }) => {
   harness.saveFails = true
   await page.goto(origin)
-  await page.getByRole('button', { name: /Make room to focus/ }).click()
+  await page.getByRole('button', { name: /Work & focus/ }).click()
   await expect(page.getByRole('alert')).toContainText('haven’t saved')
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
-  await expect(page.locator('.home-apps h2')).toContainText('Make room to focus')
+  await expect(page.locator('.home-apps h2')).toContainText('Work & focus')
   harness.saveFails = false
   await page.getByRole('button', { name: 'Try again', exact: true }).click()
   await expect.poll(() => harness.prefs.active_space).toBe('focus')
@@ -58,7 +58,7 @@ test('failed preference saves remain visible, survive refresh, and can retry', a
 
 test('focus sessions survive reload, pause, complete and stay private per account', async ({ page, harness }) => {
   await page.goto(origin)
-  await page.getByRole('button', { name: 'Enter your focus room', exact: false }).click()
+  await page.getByRole('button', { name: /Focus timer/ }).click()
   await page.getByRole('button', { name: '15 min', exact: true }).click()
   await page.keyboard.press('Escape')
   await page.reload()
@@ -73,27 +73,27 @@ test('focus sessions survive reload, pause, complete and stay private per accoun
     localStorage.setItem(key, JSON.stringify({ ...f, endsAt: Date.now() - 1000 }))
   })
   await page.reload()
-  await expect(page.locator('.focus-mini')).toContainText('A little progress, made.')
+  await expect(page.locator('.focus-mini')).toContainText('Focus session done')
   harness.userId = 8
   await page.reload()
-  await expect(page.getByRole('heading', { name: /^At home/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Alex/ })).toBeVisible()
   await expect(page.locator('.focus-mini')).toHaveCount(0)
 })
 
 test('mobile layout fits and unavailable apps do not create a frame', async ({ page, harness }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto(origin)
-  await expect(page.getByRole('heading', { name: /^At home/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Alex/ })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   await expect(page.getByRole('button', { name: 'Search apps or intentions' })).toBeVisible()
   await page.goto(origin + '/app/missing-999')
-  await expect(page.getByRole('heading', { name: 'This app isn’t available in your profile.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'This app isn’t available on your account.' })).toBeVisible()
   await expect(page.locator('iframe')).toHaveCount(0)
 })
 
-test('keyboard focus stays inside the space editor and Escape returns it', async ({ page, harness }) => {
+test('keyboard focus stays inside the collection editor and Escape returns it', async ({ page, harness }) => {
   await page.goto(origin)
-  const trigger = page.getByRole('button', { name: 'Create a space', exact: false })
+  const trigger = page.getByRole('button', { name: 'Create a collection', exact: false })
   await trigger.click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()

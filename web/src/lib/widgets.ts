@@ -34,7 +34,6 @@ export const DEFAULT_WIDGETS: HomeWidget[] = [
   { id: 'home-clock', kind: 'clock', size: 'small', config: { clockStyle: 'analog' } },
   { id: 'home-calendar', kind: 'calendar', size: 'small', config: {} },
   { id: 'home-focus', kind: 'focus', size: 'medium', config: {} },
-  { id: 'home-favorites', kind: 'favorites', size: 'medium', config: {} },
   { id: 'home-note', kind: 'note', size: 'medium', config: {} },
   { id: 'home-activity', kind: 'activity', size: 'medium', config: {} },
   { id: 'home-health', kind: 'health', size: 'small', config: {} },
