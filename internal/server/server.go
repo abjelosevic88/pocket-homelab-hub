@@ -98,6 +98,7 @@ func (s *Server) Router() http.Handler {
 	r.Use(middleware.Compress(5))
 	r.Use(middleware.Timeout(60 * time.Second))
 
+	r.Get("/pocket-ask.js", s.core.AskWidget("hub"))
 	r.Get("/healthz", s.handleHealth)
 	r.Get("/readyz", s.handleReady)
 	if s.cfg.MetricsEnabled {
