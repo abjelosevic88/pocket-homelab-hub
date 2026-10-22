@@ -1,3 +1,4 @@
+import { AskButton } from './AskButton'
 import { OverlayPresence } from './ui'
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -61,6 +62,7 @@ function Desktop() {
         <span className="topbar-title">{inApp ? 'Apps' : TITLES[loc.pathname] || ''}</span>
         <span className="mobile-brand"><Brand name={box} compact /></span>
         <button className="search-trigger" onClick={() => setPalette(true)} aria-label="Search apps or intentions"><Search /><span>Search apps…</span><kbd>⌘K</kbd></button>
+        {!inApp && <AskButton />}
         <button className="iconbtn" onClick={() => setPrefs({ theme: mode === 'dark' ? 'light' : 'dark' })} aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={mode === 'dark' ? 'Light mode' : 'Dark mode'}>{mode === 'dark' ? <Sun /> : <Moon />}</button>
         <button className="new-button" onClick={() => capture()} aria-label="Quick capture" title="Add a task, note or memory · Ctrl/⌘ Shift K"><Plus /><span>New</span></button>
       </header>
