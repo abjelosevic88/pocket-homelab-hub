@@ -215,6 +215,7 @@ function Connect({ kind, name, error, onRetry }: { kind: 'reconnect' | 'unconfig
         {kind === 'unconfigured' && <>
           <h1>Almost ready</h1>
           <p>Your Pocket Box is still being set up. The person who set it up needs to finish connecting your apps.</p>
+          <p className="core-hint">Your apps come from Pocket Core. Pocket Core connects your Pocket apps to each other and to your services: one sign-in for everyone, each person's own accounts, nothing to copy or paste. Set CORE_URL to connect this app. <a href="https://github.com/abjelosevic88/pocket-homelab-core" target="_blank" rel="noreferrer">Learn more</a></p>
         </>}
         {kind === 'unreachable' && <>
           <h1>Can’t reach your apps</h1>

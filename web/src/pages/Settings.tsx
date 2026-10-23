@@ -103,7 +103,9 @@ export default function SettingsPage() {
           <dl className="facts">
             <dt>Name</dt><dd>{launcher?.box?.name || 'Pocket Box'}</dd>
             <dt>Version</dt><dd className="mono">{(sys?.version || status?.version || '').replace(/^v/, '')}</dd>
-            {user?.role === 'admin' && sys?.core.configured && <><dt>Box management</dt><dd>{sys.core.registered ? <a href={sys.core.public_url} target="_blank" rel="noreferrer">Open Pocket Core</a> : 'Still connecting'}{sys.core.error && <span className="muted"> · {sys.core.error}</span>}</dd></>}
+            {user?.role === 'admin' && sys && (sys.core.configured
+              ? <><dt>Box management</dt><dd>{sys.core.registered ? <a href={sys.core.public_url} target="_blank" rel="noreferrer">Open Pocket Core</a> : 'Still connecting'}{sys.core.error && <span className="muted"> · {sys.core.error}</span>}</dd></>
+              : <><dt>Box management</dt><dd><span className="core-off" aria-disabled="true">Open Pocket Core</span><span className="core-hint">Needs Pocket Core. Pocket Core connects your Pocket apps to each other and to your services: one sign-in for everyone, each person's own accounts, nothing to copy or paste. Set CORE_URL to connect this app. <a href="https://github.com/abjelosevic88/pocket-homelab-core" target="_blank" rel="noreferrer">Learn more</a></span></dd></>)}
           </dl>
         </div>
       </section>

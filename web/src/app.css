@@ -604,3 +604,8 @@ input[type=checkbox] { accent-color: var(--accent); }
 }
 @media (max-width: 360px) { .appgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .editing .tile { animation: none; } .quick-action, .tile, .btn { transition: none; } }
+
+/* Pocket Core choices on a box without a Core: visible, greyed out, explained */
+.core-off { display: inline-block; opacity: .45; cursor: not-allowed; color: var(--text-2); }
+.core-hint { display: block; margin: 6px 0 0; font-size: .82rem; line-height: 1.5; color: var(--text-2); }
+.core-hint a { color: inherit; text-decoration: underline; }
