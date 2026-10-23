@@ -28,6 +28,40 @@ A Pocket Box runs a dozen Pocket apps and a few dozen third-party services, and 
 - **Activity.** What the apps published about you (the admin sees the household's bus too), grouped by day, linking back into the app. Members see their own doings in the Pocket apps that let the hub read them: the hub asks each app for an `events:read` link, which the admin and every person can switch off in Core.
 - **Honest about who sees what.** The hub never reads the person's list with its own app token. Core's audience rules decide, the hub only draws.
 
+<p align="center"><img src="docs/screenshots/home.png" width="900" alt="The Home page: a greeting, intent search, quick capture buttons, the person's apps, and Today cards for tasks, habits, meals and recent notes"></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/workspace.png" alt="Pocket Core open inside the hub as a tab, with the hub's sidebar still around it"></td>
+    <td width="50%"><img src="docs/screenshots/search.png" alt="The search palette with “plan dinner” typed and Pocket Kitchen as the match"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Apps open inside the hub as tabs and keep their place while you move around.</sub></td>
+    <td align="center"><sub>Type what you want to do; the hub finds the app for it.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/library.png" alt="The app library: every app with its description, favorites starred"></td>
+    <td width="50%"><img src="docs/screenshots/activity.png" alt="The Activity feed: what Kitchen, Habits, Notes, Calendar, Tasks and other apps recorded today"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Every app in your profile, searchable and filterable.</sub></td>
+    <td align="center"><sub>What the apps recorded about you, grouped by day.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/widgets.png" alt="Home widgets: clock, calendar, focus timer, quick note, activity, app health and countdown"></td>
+    <td width="50%"><img src="docs/screenshots/home-dark.png" alt="The Home page in dark mode"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Widgets you add, size and arrange yourself.</sub></td>
+    <td align="center"><sub>Dark mode.</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/phone-home.png" width="240" alt="Home on a phone">&nbsp;&nbsp;
+  <img src="docs/screenshots/phone-today-dark.png" width="240" alt="Today on a phone, dark">
+</p>
+
 ## Run it
 
 ```sh
