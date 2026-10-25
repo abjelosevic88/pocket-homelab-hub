@@ -47,7 +47,8 @@ test('rearranging, resizing, removing and undoing persist across reloads', async
   await expect(page.locator('.widget-slot').nth(1)).toHaveAttribute('data-widget-id', 'home-clock')
   await expect(page.getByRole('article', { name: 'Countdown widget', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Edit home', exact: true }).click()
-  await page.getByRole('button', { name: 'Move Clock', exact: true }).scrollIntoViewIfNeeded()
+  // Center the handle so the drag stays clear of the board's edge auto-scroll.
+  await page.getByRole('button', { name: 'Move Clock', exact: true }).evaluate(el => el.scrollIntoView({ block: 'center' }))
   const from = await page.getByRole('button', { name: 'Move Clock', exact: true }).boundingBox()
   const to = await page.getByRole('article', { name: 'Focus widget', exact: true }).boundingBox()
   await page.mouse.move(from!.x + 15, from!.y + 15)

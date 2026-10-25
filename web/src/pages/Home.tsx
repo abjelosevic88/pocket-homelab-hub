@@ -5,7 +5,7 @@ import { useApp } from '../lib/app-context'
 import type { Activity, Tile } from '../lib/types'
 import { AppIcon } from '../components/AppIcon'
 import { Modal, OverlayPresence, Spinner } from '../components/ui'
-import { Check, Journal, Note, Phone, Plus, Refresh, Search, Task, Timer, X } from '../components/icons'
+import { Check, Journal, Note, Phone, Plus, Refresh, Task, Timer, X } from '../components/icons'
 import { HomeDailyOverview } from './Today'
 import { WidgetBoard } from '../components/widgets/WidgetBoard'
 import { SpaceEditor } from '../components/experience/SpaceEditor'
@@ -14,12 +14,12 @@ import { capture } from '../lib/daily-context'
 import { usePersonal } from '../lib/personal-context'
 import { greeting } from '../lib/format'
 import { friendlyName, isDown } from '../lib/catalog'
+import { categorize } from '../lib/categories'
 
 export default function HomePage() {
-  const { launcher, tiles, prefs, setPrefs, open, setSheet, editing, setEditing, reload, loading, launcherError, status, user, setPalette } = useApp()
+  const { launcher, tiles, dockTiles, prefs, setPrefs, open, setSheet, editing, setEditing, reload, loading, launcherError, status, user } = useApp()
   const { recent } = usePersonal()
   const [activityError, setActivityError] = useState(false)
-  const [showAll, setShowAll] = useState(false)
   const [activity, setActivity] = useState<Activity | null>(null)
   const [editor, setEditor] = useState<Space | 'new' | null>(null)
   useEffect(() => {
@@ -38,11 +38,10 @@ export default function HomePage() {
   const spaces = spacesFor(prefs)
   const activeSpace = spaces.find(s => s.id === prefs.active_space)
   const selected = activeSpace ? spaceTiles(activeSpace, tiles) : tiles
-  const LIMIT = 16
-  const visible = showAll || editing || activeSpace ? selected : selected.slice(0, LIMIT)
-  const groups = prefs.group && !activeSpace ? groupTiles(visible) : [['', visible] as [string, Tile[]]]
+  const shelves = activeSpace || editing || prefs.app_view === 'grid' ? [['', selected] as [string, Tile[]]] : categorize(selected)
   const first = (user?.name || '').split(/\s/)[0]
-  const visits = recent.map(v => tiles.find(t => t.key === v.key)).filter((t): t is Tile => !!t).slice(0, 5)
+  const visits = recent.map(v => tiles.find(t => t.key === v.key)).filter((t): t is Tile => !!t).slice(0, 6)
+  const favorites = dockTiles.filter(t => tiles.some(v => v.key === t.key))
 
   return (
     <div className="home">
@@ -56,18 +55,21 @@ export default function HomePage() {
         <BoxStatus />
       </header>
 
-      <button className="home-search" onClick={() => setPalette(true)}><Search size={22} /><span>What would you like to do? Try “photos” or “plan dinner”</span><kbd>⌘K</kbd></button>
-
       <section className="quick-actions" aria-label="Quick actions">
-        <button className="quick-action qa-task" onClick={() => capture('task')}><span><Task /></span><span><strong>Add a task</strong><small>Something to do</small></span></button>
-        <button className="quick-action qa-note" onClick={() => capture('note')}><span><Note /></span><span><strong>Write a note</strong><small>An idea or list</small></span></button>
-        <button className="quick-action qa-moment" onClick={() => capture('moment')}><span><Journal /></span><span><strong>Save a memory</strong><small>For your journal</small></span></button>
-        <button className="quick-action qa-focus" onClick={() => window.dispatchEvent(new Event('hub:focus'))}><span><Timer /></span><span><strong>Focus timer</strong><small>25 quiet minutes</small></span></button>
+        <button className="quick-action qa-task" onClick={() => capture('task')} title="Something to do"><span><Task /></span><strong>Add a task</strong></button>
+        <button className="quick-action qa-note" onClick={() => capture('note')} title="An idea or a list"><span><Note /></span><strong>Write a note</strong></button>
+        <button className="quick-action qa-moment" onClick={() => capture('moment')} title="For your journal"><span><Journal /></span><strong>Save a memory</strong></button>
+        <button className="quick-action qa-focus" onClick={() => window.dispatchEvent(new Event('hub:focus'))} title="25 quiet minutes"><span><Timer /></span><strong>Focus timer</strong></button>
       </section>
+
+      {favorites.length > 0 && <section className="home-favorites" aria-label="Favorites">
+        <h2 className="shelf-label">Favorites</h2>
+        <div className="favorites-row">{favorites.map(t => <button key={t.key} className="tile" onClick={() => open(t)} onContextMenu={e => { e.preventDefault(); setSheet(t) }} aria-label={t.name}><span className="tile-ico"><AppIcon t={t} />{isDown(t) && <span className="status down" />}</span><span className="tile-name">{friendlyName(t)}</span></button>)}</div>
+      </section>}
 
       <section id="space-apps" className="home-apps" aria-label="Your apps">
         <div className="section-head">
-          <div><h2>{activeSpace?.name || 'Your apps'}</h2><p>{activeSpace ? activeSpace.description : 'Tap an app to open it. Press and hold for options.'}</p></div>
+          <div><h2>{activeSpace?.name || 'Your apps'}</h2><p>{activeSpace ? activeSpace.description : `${tiles.length} ${tiles.length === 1 ? 'app' : 'apps'} · tap to open, press and hold for options`}</p></div>
           <div className="grid-tools">
             <button className="iconbtn" onClick={reload} aria-label="Refresh" title="Check apps again" disabled={loading}>{loading ? <Spinner /> : <Refresh />}</button>
             {editing ? <button className="btn small primary" onClick={() => setEditing(false)}><Check /> Done</button> : <button className="btn small" onClick={() => setEditing(true)}>Arrange</button>}
@@ -82,16 +84,15 @@ export default function HomePage() {
           </span>)}
           <button className="chip btnchip" onClick={() => setEditor('new')} aria-label="Create a collection"><Plus size={14} /> New collection</button>
         </div>
-        {groups.map(([g, list]) => (
-          <div key={g || 'all'} className="appsec">
-            {g && <h3 className="sec-title">{g}<span className="sec-count">{list.length}</span></h3>}
-            {list.length > 0 && <AppGrid list={list} all={tiles} editing={editing} open={open} setSheet={setSheet} onReorder={order => setPrefs({ order })} labels={prefs.labels !== false} />}
-          </div>
-        ))}
+        {visits.length > 0 && !editing && !activeSpace && <div className="recent-row" aria-label="Recently opened apps"><span className="eyebrow">Jump back in</span>{visits.map(t => <button key={t.key} className="recent-app" onClick={() => open(t)}><AppIcon t={t} size={24} />{friendlyName(t)}</button>)}</div>}
+        {selected.length > 0 && <div className={`app-shelf ${shelves.length > 1 ? 'sorted' : ''}`}>
+          {shelves.map(([name, list]) => <div key={name || 'all'} className="shelf-row">
+            {name && <h3 className="shelf-label">{name}<span>{list.length}</span></h3>}
+            <AppGrid list={list} all={tiles} editing={editing} open={open} setSheet={setSheet} onReorder={order => setPrefs({ order })} labels={prefs.labels !== false} />
+          </div>)}
+        </div>}
         {activeSpace && selected.length === 0 && <div className="home-daily-empty">No apps in this collection yet.{activeSpace.apps && <button className="btn small" onClick={() => setEditor(activeSpace)}>Choose apps</button>}</div>}
-        {!activeSpace && selected.length > LIMIT && !editing && <button className="btn show-more" onClick={() => setShowAll(v => !v)}>{showAll ? 'Show fewer' : `Show all ${selected.length} apps`}</button>}
         {editing && <p className="fine-print">Drag apps to put them in your order. Tap an app to star it or hide it.</p>}
-        {visits.length > 0 && !editing && <div className="recent-row" aria-label="Recently opened apps"><span className="eyebrow">Recently opened</span>{visits.map(t => <button key={t.key} className="recent-app" onClick={() => open(t)}><AppIcon t={t} size={24} />{friendlyName(t)}</button>)}</div>}
       </section>
 
       <HomeDailyOverview />
@@ -146,12 +147,6 @@ export function PhoneSteps() {
     <div className="help-card"><span><Phone /></span><div><h3>iPhone or iPad (Safari)</h3><ol><li>Open this page in Safari.</li><li>Tap the Share button.</li><li>Choose <b>Add to Home Screen</b>, then <b>Add</b>.</li></ol></div></div>
     <div className="help-card"><span><Phone /></span><div><h3>Android (Chrome)</h3><ol><li>Open this page in Chrome.</li><li>Tap the ⋮ menu.</li><li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li></ol></div></div>
   </div>
-}
-
-function groupTiles(tiles: Tile[]): [string, Tile[]][] {
-  const m = new Map<string, Tile[]>()
-  for (const t of tiles) m.set(t.group || 'Other', [...(m.get(t.group || 'Other') || []), t])
-  return [...m.entries()]
 }
 
 function AppGrid({ list, all, editing, open, setSheet, onReorder, labels }: { list: Tile[]; all: Tile[]; editing: boolean; open: (t: Tile) => void; setSheet: (t: Tile) => void; onReorder: (keys: string[]) => void; labels: boolean }) {
