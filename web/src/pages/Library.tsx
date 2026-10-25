@@ -4,6 +4,10 @@ import { useApp } from '../lib/app-context'
 import { AppIcon } from '../components/AppIcon'
 import { Dots, Pin, Search } from '../components/icons'
 import { aboutApp, friendlyName, isDown } from '../lib/catalog'
+import { categorize, categoryOf } from '../lib/categories'
+import type { Tile } from '../lib/types'
+
+const host = (t: Tile) => { try { return new URL(t.open_url || t.url).host } catch { return '' } }
 
 export default function LibraryPage() {
   const { allTiles, prefs, setSheet, open, dockTiles } = useApp()
@@ -12,11 +16,11 @@ export default function LibraryPage() {
   const [group, setGroup] = useState(params.get('problems') ? '!down' : '')
   const hidden = new Set(prefs.hidden || [])
   const starred = new Set(dockTiles.map(t => t.key))
-  const groups = useMemo(() => [...new Set(allTiles.map(t => t.group || 'Other'))], [allTiles])
+  const groups = useMemo(() => categorize(allTiles).map(([c]) => c), [allTiles])
   const down = allTiles.filter(isDown)
   const list = useMemo(() => {
     const s = q.trim().toLowerCase()
-    return allTiles.filter(t => (group === '!down' ? isDown(t) : !group || (t.group || 'Other') === group) && (!s || `${t.name} ${t.type} ${aboutApp(t)}`.toLowerCase().includes(s)))
+    return allTiles.filter(t => (group === '!down' ? isDown(t) : !group || categoryOf(t) === group) && (!s || `${t.name} ${t.type} ${categoryOf(t)} ${aboutApp(t)}`.toLowerCase().includes(s)))
   }, [allTiles, q, group])
 
   return (
@@ -32,21 +36,24 @@ export default function LibraryPage() {
           {down.length > 0 && <button className={`chip btnchip ${group === '!down' ? 'on' : ''}`} onClick={() => setGroup('!down')}>Needs attention</button>}
         </div>}
       </div>
-      <div className="app-cards">
-        {list.map(t => (
-          <div key={t.key} className={`app-card card ${hidden.has(t.key) ? 'dim' : ''}`}>
-            <button className="app-card-main" onClick={() => open(t)} aria-label={`Open ${t.name}`}>
-              <AppIcon t={t} size={56} />
-              <span className="app-card-text">
-                <strong>{friendlyName(t)}{starred.has(t.key) && <span style={{ color: 'var(--warn)' }} title="Favorite"><Pin size={14} /></span>}{hidden.has(t.key) && <span className="chip tiny">Hidden from Home</span>}</strong>
-                {isDown(t) ? <small className="problem"><span className="dot down" />Not responding right now</small> : <small>{aboutApp(t) || 'Open to get started.'}</small>}
-              </span>
-            </button>
-            <button className="iconbtn" onClick={() => setSheet(t)} aria-label={`More about ${t.name}`} title="Details and options"><Dots /></button>
-          </div>
-        ))}
-        {list.length === 0 && <div className="empty card-surface">No apps match “{q}”.</div>}
-      </div>
+      {list.length === 0 && <div className="empty card-surface">{q ? `No apps match “${q}”.` : 'Nothing here right now.'}</div>}
+      {(group ? [[group === '!down' ? 'Needs attention' : group, list] as [string, Tile[]]] : categorize(list)).map(([name, apps]) => <section key={name} className="app-section" aria-label={name}>
+        <h2 className="sec-title">{name}<span className="sec-count">{apps.length}</span></h2>
+        <div className="app-cards">
+          {apps.map(t => (
+            <div key={t.key} className={`app-card ${hidden.has(t.key) ? 'dim' : ''}`}>
+              <button className="app-card-main" onClick={() => open(t)} aria-label={`Open ${t.name}`}>
+                <AppIcon t={t} size={44} />
+                <span className="app-card-text">
+                  <strong><span>{friendlyName(t)}</span>{starred.has(t.key) && <span className="app-card-star" title="Favorite"><Pin size={13} /></span>}{hidden.has(t.key) && <span className="chip tiny">Hidden from Home</span>}</strong>
+                  {isDown(t) ? <small className="problem"><span className="dot down" />Not responding right now</small> : <small>{aboutApp(t) || host(t)}</small>}
+                </span>
+              </button>
+              <button className="iconbtn" onClick={() => setSheet(t)} aria-label={`More about ${t.name}`} title="Details and options"><Dots /></button>
+            </div>
+          ))}
+        </div>
+      </section>)}
     </div>
   )
 }

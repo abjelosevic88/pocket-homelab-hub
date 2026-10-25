@@ -32,10 +32,10 @@ export default function TodayPage() {
   const sources = (data?.sources || []).filter(s => allTiles.some(t => t.key === s.app_key))
   return <div className="today-page">
     <header className="today-heading"><div><h1>Today</h1><p>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · your tasks, habits, meals and notes in one place.</p></div><button className="btn" onClick={refresh} disabled={loading}><Refresh /> {loading ? 'Refreshing…' : 'Refresh'}</button></header>
-    <section className="quick-actions" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }} aria-label="Quick actions">
-      <button className="quick-action qa-task" onClick={() => capture('task')}><span><Task /></span><span><strong>Add a task</strong><small>Something to do</small></span></button>
-      <button className="quick-action qa-note" onClick={() => capture('note')}><span><Note /></span><span><strong>Write a note</strong><small>An idea or list</small></span></button>
-      <button className="quick-action qa-moment" onClick={() => capture('moment')}><span><Journal /></span><span><strong>Save a memory</strong><small>For your journal</small></span></button>
+    <section className="quick-actions" aria-label="Quick actions">
+      <button className="quick-action qa-task" onClick={() => capture('task')}><span><Task /></span><strong>Add a task</strong></button>
+      <button className="quick-action qa-note" onClick={() => capture('note')}><span><Note /></span><strong>Write a note</strong></button>
+      <button className="quick-action qa-moment" onClick={() => capture('moment')}><span><Journal /></span><strong>Save a memory</strong></button>
     </section>
     {error ? <div className="daily-error" role="alert"><h2>Today couldn’t be loaded.</h2><p>Your apps still have everything — open them directly, or try again in a moment.</p><button className="btn" onClick={refresh}>Try again</button></div> : loading && !data ? <p role="status" className="muted">Gathering your day…</p> : <div className="daily-grid">{sources.map(s => <DailyCard key={s.app_key} source={s} />)}</div>}
     {!error && data && !sources.length && <div className="daily-error"><h2>Nothing to show yet</h2><p>When you use Tasks, Habits, Kitchen or Notes, today’s items appear here automatically.</p><Link className="btn" to="/apps">Browse apps</Link></div>}

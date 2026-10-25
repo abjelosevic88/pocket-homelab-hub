@@ -64,7 +64,7 @@ export default function SettingsPage() {
         <div className="card-surface panel">
           <Toggle label="Show app names" help="Names under each app icon." value={prefs.labels !== false} onChange={v => setPrefs({ labels: v })} />
           <Toggle label="Smaller icons" help="Fit more apps on the screen." value={prefs.density === 'compact'} onChange={v => setPrefs({ density: v ? 'compact' : 'cozy' })} />
-          <Toggle label="Group apps by type" value={!!prefs.group} onChange={v => setPrefs({ group: v })} />
+          <Toggle label="Sort apps into categories" help="Everyday, Money, Files and more. Turn off for one grid in your own order." value={prefs.app_view !== 'grid'} onChange={v => setPrefs({ app_view: v ? 'categories' : 'grid' })} />
           <Toggle label="24-hour clock" value={!!prefs.clock24} onChange={v => setPrefs({ clock24: v })} />
           <Toggle label="Getting started guide" help="Show the welcome checklist on Home." value={!prefs.welcome_done} onChange={v => setPrefs({ welcome_done: !v })} />
           <div className="row-between" style={{ padding: '14px 0' }}>

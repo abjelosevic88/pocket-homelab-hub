@@ -59,6 +59,7 @@ export type Prefs = {
   density?: 'cozy' | 'compact'
   labels?: boolean
   group?: boolean
+  app_view?: 'categories' | 'grid'
   clock24?: boolean
   order?: string[]
   dock?: string[]

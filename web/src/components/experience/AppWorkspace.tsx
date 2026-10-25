@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../../lib/app-context'
 import type { Tile } from '../../lib/types'
 import { AppIcon } from '../AppIcon'
-import { Refresh, X, External } from '../icons'
+import { Home, Refresh, X, External } from '../icons'
 
 export function AppWorkspace() {
   const { allTiles, launcher, openApps, setOpenApps, open, setPalette } = useApp()
@@ -29,6 +29,7 @@ export function AppWorkspace() {
   if (!key && !apps.length) return null
   return <section className="app-workspace" hidden={!key} aria-label="App workspace">
     <div className="workspace-bar">
+      <button className="iconbtn workspace-home" onClick={() => navigate('/')} aria-label="Back to Home" title="Home"><Home /></button>
       <div className="workspace-tabs" aria-label="Open apps">{apps.map(t => <div key={t.key} className={`workspace-tab ${t.key === key ? 'active' : ''}`}><button onClick={() => open(t)} aria-current={t.key === key ? 'page' : undefined}><AppIcon t={t} size={22} /><span>{t.name.replace(/^Pocket /, '')}</span></button><button onClick={() => close(t.key)} aria-label={`Close ${t.name}`}><X /></button></div>)}<button className="workspace-add" onClick={() => setPalette(true)} aria-label="Open another app">＋</button></div>
       <div className="workspace-tools">{active && <button className="iconbtn" onClick={() => setRevisions(r => ({ ...r, [key]: (r[key] || 0) + 1 }))} title="Reload app" aria-label="Reload app"><Refresh /></button>}<button className="text-button" onClick={() => setHelp(v => !v)} aria-expanded={help}>Help</button></div>
     </div>

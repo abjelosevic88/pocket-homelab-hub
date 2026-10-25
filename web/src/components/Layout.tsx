@@ -24,12 +24,13 @@ export default function Layout() {
 const TITLES: Record<string, string> = { '/': 'Home', '/today': 'Today', '/apps': 'Apps', '/activity': 'Activity', '/settings': 'Settings', '/help': 'Help' }
 
 function Desktop() {
-  const { user, prefs, setPrefs, dockTiles, open, sheet, setSheet, palette, setPalette, launcher, editing, setEditing, prefsError, retryPrefs, logout } = useApp()
+  const { user, prefs, setPrefs, dockTiles, allTiles, open, sheet, setSheet, palette, setPalette, launcher, editing, setEditing, prefsError, retryPrefs, logout } = useApp()
   const loc = useLocation()
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => { setEditing(false) }, [loc.pathname, setEditing])
   useEffect(() => { const on = () => setScrolled(window.scrollY > 4); on(); window.addEventListener('scroll', on, { passive: true }); return () => window.removeEventListener('scroll', on) }, [])
   const inApp = loc.pathname.startsWith('/app/')
+  const appTile = inApp ? allTiles.find(t => `/app/${encodeURIComponent(t.key)}` === loc.pathname || `/app/${t.key}` === loc.pathname) : undefined
   const box = launcher?.box?.name || 'Pocket Box'
   const mode = resolvedTheme(appearanceFrom(prefs).theme)
   const initial = (user?.name || user?.email || '?').charAt(0).toUpperCase()
@@ -59,7 +60,7 @@ function Desktop() {
     </aside>
     <div className="main-col">
       <header className={`topbar ${scrolled ? 'scrolled' : ''}`}>
-        <span className="topbar-title">{inApp ? 'Apps' : TITLES[loc.pathname] || ''}</span>
+        <span className="topbar-title">{inApp ? (appTile ? friendlyName(appTile) : 'Apps') : TITLES[loc.pathname] || ''}</span>
         <span className="mobile-brand"><Brand name={box} compact /></span>
         <button className="search-trigger" onClick={() => setPalette(true)} aria-label="Search apps or intentions"><Search /><span>Search apps…</span><kbd>⌘K</kbd></button>
         {!inApp && <AskButton />}
