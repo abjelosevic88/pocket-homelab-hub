@@ -2,7 +2,7 @@ import type { Prefs, Tile } from './types'
 
 export type Space = { id: string; name: string; description: string; color: string; symbol: string; types?: string[]; apps?: string[] }
 export const SPACES: Space[] = [
-  { id: 'focus', name: 'Work & focus', description: 'Tasks, notes and documents.', color: '#c1caff', symbol: '◈', types: ['tasks', 'notes', 'day', 'collaborator', 'docmost', 'excalidraw', 'drawio'] },
+  { id: 'focus', name: 'Work & focus', description: 'Tasks, notes and documents.', color: '#c1caff', symbol: '◈', types: ['tasks', 'notes', 'day', 'review', 'docmost', 'excalidraw', 'drawio'] },
   { id: 'unwind', name: 'Relax', description: 'Movies, music, books and photos.', color: '#f6c99d', symbol: '☾', types: ['jellyfin', 'jellyseerr', 'navidrome', 'podcasts', 'bookshelf', 'audiobookshelf', 'immich', 'romm', 'kavita', 'calibre', 'calibre-web', 'pinepods'] },
   { id: 'life', name: 'Everyday life', description: 'Home, money, food and trips.', color: '#b7e6c6', symbol: '✳', types: ['habits', 'kitchen', 'money', 'split', 'travel', 'garage', 'inventory', 'documents', 'invoicing', 'firefly'] },
 ]
@@ -20,7 +20,7 @@ const INTENTS: { words: string[]; types: string[]; hint: string }[] = [
   { words: ['watch', 'movie', 'film', 'series', 'tv'], types: ['jellyfin', 'jellyseerr'], hint: 'Watch something' },
   { words: ['listen', 'music', 'song', 'album'], types: ['navidrome', 'podcasts', 'pinepods'], hint: 'Listen to music' },
   { words: ['read', 'book', 'reading'], types: ['bookshelf', 'kavita', 'calibre', 'calibre-web', 'audiobookshelf'], hint: 'Find a good read' },
-  { words: ['plan', 'task', 'todo', 'focus', 'work'], types: ['tasks', 'day', 'notes', 'collaborator'], hint: 'Plan my day' },
+  { words: ['plan', 'task', 'todo', 'focus', 'work'], types: ['tasks', 'day', 'notes', 'review'], hint: 'Plan my day' },
   { words: ['write', 'note', 'idea', 'brainstorm'], types: ['notes', 'docmost', 'excalidraw'], hint: 'Capture an idea' },
   { words: ['photo', 'photos', 'memories', 'picture'], types: ['immich'], hint: 'Revisit my photos' },
   { words: ['money', 'budget', 'expense', 'bill', 'spending'], types: ['money', 'split', 'firefly', 'invoicing'], hint: 'Check my spending' },

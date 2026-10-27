@@ -7,7 +7,7 @@ const CATEGORIES: [string, string[]][] = [
   ['Everyday', ['notes', 'tasks', 'calendar', 'day', 'habits', 'kitchen', 'contacts', 'clips', 'docmost']],
   ['Money', ['money', 'split', 'invoicing', 'firefly', 'pico']],
   ['Photos & media', ['photos', 'immich', 'music', 'navidrome', 'maloja', 'podcasts', 'pinepods', 'audiobooks', 'audiobookshelf', 'bookshelf', 'library', 'kavita', 'calibre', 'calibre-web', 'watch', 'jellyfin', 'jellyseerr', 'jellystat', 'still', 'subtitles', 'romm', 'metube']],
-  ['Files & work', ['files', 'documents', 'office', 'collaborator', 'projects', 'nextcloud', 'paperless', 'forgejo']],
+  ['Files & work', ['files', 'documents', 'office', 'review', 'projects', 'nextcloud', 'paperless', 'forgejo']],
   ['Life & places', ['travel', 'garage', 'lubelogger', 'health', 'movement', 'dawarich', 'inventory', 'wishlist']],
   ['Tools', ['searxng', 'changedetection', 'it-tools', 'stirling', 'excalidraw', 'drawio', 'ntfy']],
   ['Downloads', ['radarr', 'sonarr', 'lidarr', 'prowlarr', 'bazarr', 'qbittorrent', 'sabnzbd', 'nzbget', 'slskd', 'chaptarr', 'lazylibrarian']],
