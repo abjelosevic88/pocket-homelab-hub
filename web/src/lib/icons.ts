@@ -10,7 +10,7 @@ const FILES: Record<string, string> = {
   nzbget: 'nzbget.svg', paperless: 'paperless.svg', pico: 'pico.svg', pinepods: 'pinepods.png', prowlarr: 'prowlarr.svg', qbittorrent: 'qbittorrent.svg',
   radarr: 'radarr.svg', sabnzbd: 'sabnzbd.svg', scrutiny: 'scrutiny.svg', searxng: 'searxng.svg', slskd: 'slskd.svg', sonarr: 'sonarr.svg',
   speedtest: 'speedtest.png', ssh: 'ssh.svg', truenas: 'truenas.svg',
-  bookshelf: 'pocket-bookshelf.svg', clips: 'pocket-clips.svg', collaborator: 'pocket-collaborator.svg', day: 'pocket-day.svg', garage: 'pocket-garage.svg',
+  bookshelf: 'pocket-bookshelf.svg', clips: 'pocket-clips.svg', review: 'pocket-review.svg', day: 'pocket-day.svg', garage: 'pocket-garage.svg',
   habits: 'pocket-habits.svg', inventory: 'pocket-inventory.svg', invoicing: 'pocket-invoicing.svg', kitchen: 'pocket-kitchen.svg', money: 'pocket-money.svg',
   notes: 'pocket-notes.svg', podcasts: 'pocket-podcasts.svg', split: 'pocket-split.svg', subtitles: 'pocket-subtitles.svg', travel: 'pocket-travel.svg',
   documents: 'pocket-documents.svg', tasks: 'pocket-tasks.svg', core: 'pocket-core.svg', files: 'pocket-files.svg',

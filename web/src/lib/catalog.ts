@@ -19,7 +19,7 @@ const ABOUT: Record<string, string> = {
   documents: 'Scan, store and find your paperwork.',
   files: 'Your files and folders, available everywhere.',
   office: 'Write documents, spreadsheets and presentations.',
-  collaborator: 'Review documents and leave comments together.',
+  review: 'Review documents and leave comments together.',
   invoicing: 'Create invoices and see who has paid.',
   clips: 'Everything you copied, saved and easy to find again.',
   subtitles: 'Subtitles for your movies and shows.',
