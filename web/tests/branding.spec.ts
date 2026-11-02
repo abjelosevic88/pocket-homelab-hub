@@ -17,7 +17,7 @@ test('Pocket Box home puts apps first beside daily content and widgets without c
   await expect(page.getByRole('status').filter({ hasText: 'Everything is running smoothly' })).toBeVisible()
   await expect(page.locator('.sidebar .pocket-brand img')).toHaveAttribute('src', '/pocket-box.png')
   await expect.poll(() => page.locator('.sidebar .pocket-brand img').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(512)
-  expect(await page.locator('link[rel="icon"]').getAttribute('href')).toBe('/pocket-box-favicon.png?v=lament')
+  expect(await page.locator('link[rel="icon"]').getAttribute('href')).toBe('/pocket-box-favicon.png?v=sparkle')
   expect(harness.prefs).toEqual(before)
   await page.screenshot({ path: testInfo.outputPath('box-home-desktop.png'), fullPage: true })
   for (const width of [1024, 800, 768, 390, 320]) {
