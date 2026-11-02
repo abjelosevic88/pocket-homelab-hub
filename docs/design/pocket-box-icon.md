@@ -1,9 +1,19 @@
 # Pocket Box icon
 
-The owner selected the original open-lid concept on 2026-10-21. Generated using the built-in image-generation tool; no native Pocket Homelab icon artwork was used.
+On 2026-11-02 the owner chose a Hellraiser-style Lament Configuration box (option 3, "Lift", from a set of six). It replaces the earlier open-lid graphite box with a cyan opening.
 
-Source: `pocket-box-original.png`. Browser canvas resizing produces the public PNG assets and an embedded PNG at the legacy SVG favicon URL. The main UI image is 512px; installable icons are 192px and 512px, the Apple icon is 180px, and the favicon is 32px. The maskable icon has a 15% inset.
+The box is drawn in gold line on a black squircle. Each face has a frame, a medallion with a solid diamond, and corner rays. The lid is lifted a few pixels, with a thin red glow coming from inside.
 
-## Generation prompt
+Source: `e_box()` in the Pocket icon generator (`pocket-icons/make2.py`), which also writes the flat (`f_box`) and full-bleed versions. `pocket-box-readme.svg` is the same SVG.
 
-Use case: logo-brand. Create one polished app icon concept for Pocket Box, a private personal home server appliance whose unified interface holds a customer's apps, notes, memories and daily life. This is a distinct product from Pocket Homelab, so design a NEW symbol, not a house or heartbeat. Asset: square app icon, edge-to-edge dark charcoal background with a very subtle midnight-blue vignette, no presentation board. Subject: one strong compact softly rounded three-dimensional box, viewed slightly from above, with a single gracefully lifted lid and a narrow luminous cyan opening revealing quiet light inside. A welcoming little container for your personal world. Sculptural, simple, balanced geometry, generous negative space, recognizable silhouette at tiny app icon sizes. Satin graphite/slate body, soft cool silver top highlights, a small restrained aqua/cyan accent concentrated ONLY along the opening, gentle reflected light, sophisticated tactile product-icon finish. The box should occupy about 65 percent of the image width, precisely centered. Keep the opening thick and simple enough to remain legible at favicon scale. Mood: calm, private, friendly, premium. No red, no pink, no rainbow, no excessive neon or bloom, no house, no heartbeat, no letters or typography, no labels, no network nodes or circuit lines, no extra objects floating out of the box, no shipping cardboard flaps, no locks, no resemblance to a gift box. Single finished icon on a square canvas, not a grid of variants, no device mockups, no watermark.
+Every PNG is rendered from that SVG with rsvg-convert:
+
+| File | Size | Source |
+|---|---|---|
+| `pocket-box.png` (main UI image) | 512 px | squircle |
+| `icon-192.png`, `icon-512.png` | 192 and 512 px | squircle |
+| `pocket-box-favicon.png` | 32 px | squircle |
+| `apple-touch-icon.png` | 180 px | full-bleed |
+| `icon-maskable-512.png` | 512 px | full-bleed; the box sits inside the 80% safe circle |
+
+`favicon.svg` embeds the 512 px PNG for older shortcuts. The previous artwork is kept in `pocket-box-original.png`.
