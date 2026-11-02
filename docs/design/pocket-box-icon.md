@@ -1,6 +1,6 @@
 # Pocket Box icon
 
-On 2026-11-02 the owner chose "Sparkle": an open white box with five app tiles swirling up out of it and little white sparkles, on a sunny yellow-to-orange squircle. It matches the illustrated style of the other Pocket app icons. It replaces the Lament-style gold box (used briefly the same day) and the earlier graphite box with a cyan opening.
+On 2026-11-02 the owner chose "Sparkle": an open white box with five app tiles swirling up out of it and little white sparkles, on a cyan-to-blue squircle (the orange first version was switched to cyan-to-blue the same day to match pockethomelab.com). It matches the illustrated style of the other Pocket app icons. It replaces the Lament-style gold box (used briefly the same day) and the earlier graphite box with a cyan opening.
 
 Source: `e_box()` in the Pocket icon generator (`pocket-icons/make2.py`), which also writes the flat (`f_box`) and full-bleed versions. `pocket-box-readme.svg` is the same SVG.
 

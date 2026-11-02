@@ -106,6 +106,6 @@ MIT.
 
 ### Pocket Homelab identity
 
-The customer shell uses the owner-selected **Pocket Box** icon: an open white box with app tiles swirling up out of it, on a sunny orange tile. It comes from the shared Pocket icon generator (see `docs/design/pocket-box-icon.md`). The main app image is `web/public/pocket-box.png`, and the browser, Apple and installable-app sizes are rendered from the same SVG. The legacy `favicon.svg` URL also shows the box for existing shortcuts.
+The customer shell uses the owner-selected **Pocket Box** icon: an open white box with app tiles swirling up out of it, on a cyan-to-blue tile. It comes from the shared Pocket icon generator (see `docs/design/pocket-box-icon.md`). The main app image is `web/public/pocket-box.png`, and the browser, Apple and installable-app sizes are rendered from the same SVG. The legacy `favicon.svg` URL also shows the box for existing shortcuts.
 
 Home combines personal daily summaries with the existing widget layout. Labeled navigation and favorites replace the floating dock; phones use a fixed navigation bar. Existing favorite keys, wallpapers, widgets and explicitly enabled home app grids remain intact. The full app grid is off by default for new layouts and available in the library or through Home options. Selecting or saving a Space reveals its apps.
