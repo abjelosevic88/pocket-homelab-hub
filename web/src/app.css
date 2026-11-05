@@ -87,7 +87,6 @@ body { background: var(--bg); color: var(--text); font: 400 1rem/1.5 -apple-syst
 h1, h2, h3, h4 { margin: 0; font-weight: 650; letter-spacing: -.015em; line-height: 1.2; color: var(--text); }
 p { margin: 0; }
 a { color: var(--accent-ink); text-decoration: none; }
-a:hover { text-decoration: underline; }
 button { font: inherit; color: inherit; }
 img { max-width: 100%; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
@@ -121,7 +120,6 @@ img { max-width: 100%; }
 .btn.small.sq { width: 34px; }
 .btn.link { background: none; border: 0; box-shadow: none; color: var(--accent-ink); }
 .text-button { background: none; border: 0; padding: 4px 2px; color: var(--accent-ink); font-size: .88rem; font-weight: 550; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-.text-button:hover { text-decoration: underline; }
 .iconbtn { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; border: 0; background: transparent; color: var(--text-2); cursor: pointer; transition: background .15s, color .15s; }
 .iconbtn:hover { background: var(--surface-2); color: var(--text); }
 .iconbtn:disabled { opacity: .4; }
