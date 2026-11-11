@@ -24,49 +24,48 @@ export default function Layout() {
 const TITLES: Record<string, string> = { '/': 'Home', '/today': 'Today', '/apps': 'Apps', '/activity': 'Activity', '/settings': 'Settings', '/help': 'Help' }
 
 function Desktop() {
-  const { user, prefs, setPrefs, dockTiles, allTiles, open, sheet, setSheet, palette, setPalette, launcher, editing, setEditing, prefsError, retryPrefs, logout } = useApp()
+  const { user, prefs, setPrefs, dockTiles, openApps, open, sheet, setSheet, palette, setPalette, launcher, editing, setEditing, prefsError, retryPrefs, logout } = useApp()
   const loc = useLocation()
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => { setEditing(false) }, [loc.pathname, setEditing])
   useEffect(() => { const on = () => setScrolled(window.scrollY > 4); on(); window.addEventListener('scroll', on, { passive: true }); return () => window.removeEventListener('scroll', on) }, [])
   const inApp = loc.pathname.startsWith('/app/')
-  const appTile = inApp ? allTiles.find(t => `/app/${encodeURIComponent(t.key)}` === loc.pathname || `/app/${t.key}` === loc.pathname) : undefined
   const box = launcher?.box?.name || 'Pocket Box'
   const mode = resolvedTheme(appearanceFrom(prefs).theme)
   const initial = (user?.name || user?.email || '?').charAt(0).toUpperCase()
   return <div className={`shell ${inApp ? 'workspace-mode' : ''} ${prefs.density === 'compact' ? 'compact' : ''} ${editing ? 'editing' : ''}`}>
     <aside className="sidebar" aria-label="Sidebar">
-      <Brand name={box} />
+      <NavLink to="/" className="side-brand" title={box} aria-label={`${box} home`}><Brand name={box} /></NavLink>
       <nav className="side-nav" aria-label="Main navigation">
-        <NavLink to="/" end><Home /><span>Home</span></NavLink>
-        <NavLink to="/apps"><Grid /><span>Apps</span></NavLink>
-        <NavLink to="/today"><Calendar /><span>Today</span></NavLink>
-        <NavLink to="/activity"><Bell /><span>Activity</span></NavLink>
+        <NavLink to="/" end title="Home"><Home /><span>Home</span></NavLink>
+        <NavLink to="/apps" title="Apps"><Grid /><span>Apps</span></NavLink>
+        <NavLink to="/today" title="Today"><Calendar /><span>Today</span></NavLink>
+        <NavLink to="/activity" title="Activity"><Bell /><span>Activity</span></NavLink>
       </nav>
       <div className="side-label">Favorites</div>
       <div className="side-favorites sidebar-favorites">
-        {dockTiles.length ? dockTiles.map(t => <button key={t.key} onClick={() => open(t)} onContextMenu={e => { e.preventDefault(); setSheet(t) }} aria-label={`Open ${t.name}`} title={t.name}><AppIcon t={t} size={26} /><span>{friendlyName(t)}</span>{t.status && t.status !== 'ok' && <span className="dot down" aria-label="Not responding" />}</button>) : <p>Star an app in its details to keep it here.</p>}
+        {dockTiles.length ? dockTiles.map(t => <button key={t.key} className={`${openApps.includes(t.key) ? 'open' : ''} ${loc.pathname === `/app/${encodeURIComponent(t.key)}` ? 'current' : ''}`} onClick={() => open(t)} onContextMenu={e => { e.preventDefault(); setSheet(t) }} aria-label={`Open ${t.name}`} title={t.name}><AppIcon t={t} size={26} /><span>{friendlyName(t)}</span>{t.status && t.status !== 'ok' && <span className="dot down" aria-label="Not responding" />}</button>) : <p>Star an app in its details to keep it here.</p>}
       </div>
       <div className="side-spacer" />
       <nav className="side-nav" aria-label="Help and settings">
-        <NavLink to="/help"><Help /><span>Help</span></NavLink>
-        <NavLink to="/settings"><Gear /><span>Settings</span></NavLink>
+        <NavLink to="/help" title="Help"><Help /><span>Help</span></NavLink>
+        <NavLink to="/settings" title="Settings"><Gear /><span>Settings</span></NavLink>
       </nav>
       <div className="side-account">
-        <span className="avatar" aria-hidden="true">{initial}</span>
+        <NavLink to="/settings" className="avatar" title={user?.name || user?.email || "Your account"} aria-label="Your account settings">{initial}</NavLink>
         <span><strong>{user?.name || 'Your account'}</strong><small>{user?.email}</small></span>
         <button className="iconbtn" onClick={() => { void logout() }} title="Sign out" aria-label="Sign out"><Logout /></button>
       </div>
     </aside>
     <div className="main-col">
-      <header className={`topbar ${scrolled ? 'scrolled' : ''}`}>
-        <span className="topbar-title">{inApp ? (appTile ? friendlyName(appTile) : 'Apps') : TITLES[loc.pathname] || ''}</span>
+      {!inApp && <header className={`topbar ${scrolled ? 'scrolled' : ''}`}>
+        <span className="topbar-title">{TITLES[loc.pathname] || ''}</span>
         <span className="mobile-brand"><Brand name={box} compact /></span>
         <button className="search-trigger" onClick={() => setPalette(true)} aria-label="Search apps or intentions"><Search /><span>Search apps…</span><kbd>⌘K</kbd></button>
-        {!inApp && <AskButton />}
+        <AskButton />
         <button className="iconbtn" onClick={() => setPrefs({ theme: mode === 'dark' ? 'light' : 'dark' })} aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={mode === 'dark' ? 'Light mode' : 'Dark mode'}>{mode === 'dark' ? <Sun /> : <Moon />}</button>
         <button className="new-button" onClick={() => capture()} aria-label="Quick capture" title="Add a task, note or memory · Ctrl/⌘ Shift K"><Plus /><span>New</span></button>
-      </header>
+      </header>}
       <main className="desk-main" hidden={inApp}><Outlet /></main>
       <AppWorkspace />
     </div>

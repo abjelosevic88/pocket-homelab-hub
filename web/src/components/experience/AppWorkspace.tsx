@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../../lib/app-context'
 import type { Tile } from '../../lib/types'
 import { AppIcon } from '../AppIcon'
-import { Home, Refresh, X, External } from '../icons'
+import { Help, Home, Plus, Refresh, Search, X, External } from '../icons'
+import { capture } from '../../lib/daily-context'
 
 export function AppWorkspace() {
   const { allTiles, launcher, openApps, setOpenApps, open, setPalette } = useApp()
@@ -30,8 +31,14 @@ export function AppWorkspace() {
   return <section className="app-workspace" hidden={!key} aria-label="App workspace">
     <div className="workspace-bar">
       <button className="iconbtn workspace-home" onClick={() => navigate('/')} aria-label="Back to Home" title="Home"><Home /></button>
-      <div className="workspace-tabs" aria-label="Open apps">{apps.map(t => <div key={t.key} className={`workspace-tab ${t.key === key ? 'active' : ''}`}><button onClick={() => open(t)} aria-current={t.key === key ? 'page' : undefined}><AppIcon t={t} size={22} /><span>{t.name.replace(/^Pocket /, '')}</span></button><button onClick={() => close(t.key)} aria-label={`Close ${t.name}`}><X /></button></div>)}<button className="workspace-add" onClick={() => setPalette(true)} aria-label="Open another app">＋</button></div>
-      <div className="workspace-tools">{active && <button className="iconbtn" onClick={() => setRevisions(r => ({ ...r, [key]: (r[key] || 0) + 1 }))} title="Reload app" aria-label="Reload app"><Refresh /></button>}<button className="text-button" onClick={() => setHelp(v => !v)} aria-expanded={help}>Help</button></div>
+      <div className="workspace-tabs" aria-label="Open apps">{apps.map(t => <div key={t.key} className={`workspace-tab ${t.key === key ? 'active' : ''}`}><button onClick={() => open(t)} aria-current={t.key === key ? 'page' : undefined} title={t.name}><AppIcon t={t} size={18} /><span>{t.name.replace(/^Pocket /, '')}</span></button><button className="tab-close" onClick={() => close(t.key)} aria-label={`Close ${t.name}`} title="Close"><X size={14} /></button></div>)}<button className="workspace-add" onClick={() => setPalette(true)} aria-label="Open another app" title="Open another app · ⌘K"><Plus size={16} /></button></div>
+      <div className="workspace-tools">
+        <button className="iconbtn" onClick={() => setPalette(true)} aria-label="Search apps" title="Search apps · ⌘K"><Search /></button>
+        <button className="iconbtn" onClick={() => capture()} aria-label="Quick capture" title="Add a task, note or memory · Ctrl/⌘ Shift K"><Plus /></button>
+        {active && <button className="iconbtn" onClick={() => setRevisions(r => ({ ...r, [key]: (r[key] || 0) + 1 }))} title="Reload app" aria-label="Reload app"><Refresh /></button>}
+        {active && <a className="iconbtn" href={active.open_url || active.url} target="_blank" rel="noopener noreferrer" title="Open in a new browser tab" aria-label="Open in a new browser tab"><External /></a>}
+        <button className={`iconbtn ${help ? 'on' : ''}`} onClick={() => setHelp(v => !v)} aria-expanded={help} aria-label="Help" title="Help"><Help size={18} /></button>
+      </div>
     </div>
     {help && <div className="workspace-help"><span>Your app stays open while you go Home or switch apps. If it asks you to sign in and nothing happens, open it in a new tab, sign in there, then press reload here.</span>{active && <a className="btn small" href={active.open_url || active.url} target="_blank" rel="noopener noreferrer">Open in new tab <External /></a>}</div>}
     {apps.map(t => <AppFrame key={`${t.key}-${revisions[t.key] || 0}`} tile={t} active={key === t.key} onHelp={() => setHelp(true)} />)}
