@@ -394,8 +394,9 @@ func (v visibility) sees(e core.Event) bool {
 }
 
 // handleActivity lists what happened lately, as far as Core lets this person see.
-// Admins read the bus with their own token; members get their own doings in the
-// Pocket apps that let the hub read them (events:read links), through the hub's token.
+// Admins see the whole bus (read with the hub's token once Core confirms the role);
+// members get their own doings in the Pocket apps that let the hub read them
+// (events:read links), through the hub's token.
 func (s *Server) handleActivity(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p := principalFrom(ctx)
@@ -423,6 +424,14 @@ func (s *Server) handleActivity(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"events": []core.Event{}, "scope": "none", "error": err.Error()})
 		return
 	} else {
+		// Core never lets a sign-in token act as an admin (Core 0.45.0), so an
+		// admin's whole-box view comes through the hub's own token instead,
+		// once Core confirms the person is an admin there.
+		if tok != "" {
+			if in, ierr := s.core.Introspect(ctx, tok); ierr == nil && in.Active && in.User != nil && in.User.Role == "admin" {
+				scope, v.admin = "box", true
+			}
+		}
 		events, err = s.core.Events(ctx, "", 0, limit)
 		if err != nil {
 			writeJSON(w, http.StatusOK, map[string]any{"events": []core.Event{}, "scope": "none", "error": err.Error()})
