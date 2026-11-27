@@ -40,29 +40,24 @@ type captureDestination struct {
 	Fields      []string `json:"fields"`
 }
 
-// The hand-written captures: what a task, a note and a journal moment become
-// in the three apps Hub has always known. They serve app versions that do not
-// declare quick capture in their manifest.
+// The hand-written capture: a journal moment in Pocket Day, which offers no
+// quick capture of its own. Tasks and Notes take a task and a note through
+// their Core link like any other app.
 type hardCapture struct {
 	app, kind, label string
 	fields           []string
 }
 
-var hardCaptures = []hardCapture{
-	{"tasks", "task", "Task", []string{"title", "due"}},
-	{"notes", "note", "Note", []string{"title"}},
-	{"day", "moment", "Journal moment", []string{"date"}},
-}
+var momentCapture = hardCapture{"day", "moment", "Journal moment", []string{"date"}}
 
-// hardCaptureFor finds the hand-written capture by the app's slug or, with an
-// empty slug, by the word a client sends as "kind".
-func hardCaptureFor(app, kind string) *hardCapture {
-	for i := range hardCaptures {
-		if (app == "" || hardCaptures[i].app == app) && (kind == "" || hardCaptures[i].kind == kind) {
-			return &hardCaptures[i]
-		}
+// hardCaptureFor finds the hand-written capture for an app: Day, at the address
+// Core has for it, while it offers no quick capture of its own. An empty kind
+// matches any.
+func hardCaptureFor(app personalApp, kind string) *hardCapture {
+	if app.URL == "" || app.capture != nil || app.Kind != momentCapture.app || (kind != "" && kind != momentCapture.kind) {
+		return nil
 	}
-	return nil
+	return &momentCapture
 }
 
 // captureKinds are the kinds the app keeps through its Core link, tidied: a
@@ -100,54 +95,33 @@ func captureKinds(app personalApp) []core.CaptureKind {
 }
 
 // destinationsOf lists where a quick line can go: every kind an app keeps
-// through its Core link, or the hand-written one for a first-party app without
-// such a link. An app whose link is off is simply not offered.
+// through its Core link, and Day's journal moment. An app whose link is off is
+// simply not offered.
 func destinationsOf(apps []personalApp) []captureDestination {
 	out := []captureDestination{}
 	for _, app := range apps {
-		kinds := captureKinds(app)
-		if len(kinds) == 0 {
-			if h := hardCaptureFor(app.Kind, ""); h != nil && app.URL != "" {
-				out = append(out, captureDestination{personalApp: app, CaptureKind: h.kind, Label: h.label, Fields: h.fields})
-			}
+		if h := hardCaptureFor(app, ""); h != nil {
+			out = append(out, captureDestination{personalApp: app, CaptureKind: h.kind, Label: h.label, Fields: h.fields})
 			continue
 		}
-		for _, k := range kinds {
+		for _, k := range captureKinds(app) {
 			out = append(out, captureDestination{personalApp: app, CaptureKind: k.Kind, Label: k.Label, What: k.What, Fields: k.Fields})
 		}
 	}
 	return out
 }
 
-// hardCaptureRequest is the app's own route and body for a hand-written
-// capture, or the sentence that says what is missing.
-func hardCaptureRequest(in captureInput) (path string, body map[string]any, problem string) {
-	switch in.Kind {
-	case "task":
-		if in.Title == "" {
-			return "", nil, "Give your task a title."
-		}
-		body = map[string]any{"title": in.Title, "notes": in.Text}
-		if in.Due != "" {
-			body["due"] = in.Due
-		}
-		return "/tasks", body, ""
-	case "note":
-		if in.Title == "" && in.Text == "" {
-			return "", nil, "Write a title or some text for your note."
-		}
-		return "/notes", map[string]any{"title": in.Title, "content": in.Text}, ""
-	case "moment":
-		if in.Text == "" {
-			return "", nil, "Write a moment to keep."
-		}
-		body = map[string]any{"text": in.Text, "kind": "note"}
-		if in.Date != "" {
-			body["date"] = in.Date
-		}
-		return "/moments", body, ""
+// momentRequest is Day's own route and body for a journal moment, or the
+// sentence that says what is missing.
+func momentRequest(in captureInput) (path string, body map[string]any, problem string) {
+	if in.Text == "" {
+		return "", nil, "Write a moment to keep."
 	}
-	return "", nil, "Choose a task, note or journal moment."
+	body = map[string]any{"text": in.Text, "kind": "note"}
+	if in.Date != "" {
+		body["date"] = in.Date
+	}
+	return "/moments", body, ""
 }
 
 func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
@@ -194,9 +168,8 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// A kind the app keeps through its Core link goes there with a link token.
-	// A task, a note and a journal moment also keep their hand-written route
-	// (the person's own token, Tasks, Notes and Day only), for when the app
-	// offers no capture or its link is off.
+	// A journal moment goes to Day's own route with the person's own token
+	// (Day only, at the address Core has for it); there is no other way round.
 	var declared *core.CaptureKind
 	kinds := captureKinds(*target)
 	for i := range kinds {
@@ -204,34 +177,26 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 			declared = &kinds[i]
 		}
 	}
-	hard := hardCaptureFor(target.Kind, in.Kind)
-	if target.URL == "" {
-		hard = nil // not at the address Core has for it: the person's token stays here
-	}
+	hard := hardCaptureFor(*target, in.Kind)
 	if declared == nil && hard == nil {
 		switch {
 		case target.capture != nil && !target.captureLink.on:
 			writeErr(w, 403, linkOffSentence(target.captureLink.state))
-		case len(kinds) > 0:
+		case len(kinds) > 0 || hardCaptureFor(*target, "") != nil:
 			writeErr(w, 400, target.Name+" does not keep that. Choose one of the things it offers.")
-		case hardCaptureFor("", in.Kind) != nil:
-			writeErr(w, 403, "This destination is no longer available in your profile.")
 		default:
-			writeErr(w, 400, "Choose a task, note or journal moment.")
+			writeErr(w, 403, "This destination is no longer available in your profile.")
 		}
 		return
 	}
 	contract := declared != nil
 	var hardPath string
 	var hardBody map[string]any
-	if hard != nil {
+	if !contract {
 		var problem string
-		if hardPath, hardBody, problem = hardCaptureRequest(in); problem != "" {
-			if !contract {
-				writeErr(w, 400, problem)
-				return
-			}
-			hard = nil // the hand-written route cannot take this content: no fallback
+		if hardPath, hardBody, problem = momentRequest(in); problem != "" {
+			writeErr(w, 400, problem)
+			return
 		}
 	}
 	var send core.CaptureInput
@@ -291,15 +256,8 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 		if errors.As(requestErr, &off) {
 			s.forgetCapable(p.user.Email)
 		}
-		if requestErr != nil && hard != nil && useHardWired(requestErr) {
-			// Core has just refused the link, or the app that runs does not
-			// serve the route yet: nothing was kept, so its own route is used.
-			contract = false
-		} else {
-			status, receipt = contractReceipt(*target, in.Kind, saved, requestErr)
-		}
-	}
-	if !contract {
+		status, receipt = contractReceipt(*target, in.Kind, saved, requestErr)
+	} else {
 		var saved struct {
 			ID int64 `json:"id"`
 		}

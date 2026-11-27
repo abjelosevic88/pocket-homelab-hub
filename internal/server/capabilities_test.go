@@ -131,7 +131,7 @@ func TestDailyShowsAnyAppThatOffersAWidget(t *testing.T) {
 // the day and never turns into an empty widget.
 func TestDailyWidgetFailuresStayWithTheirApp(t *testing.T) {
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, []map[string]any{{"id": 2, "title": "A note"}})
+		writeJSON(w, 200, map[string]any{"items": []map[string]any{{"id": "2", "title": "A note"}}})
 	})
 	f.add(t, "garden", gardenWidget, func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, map[string]any{"error": "private backend detail"})
@@ -214,10 +214,10 @@ func TestLinkOffIsNotAskedAndSaysWhy(t *testing.T) {
 	}
 }
 
-// The person's own token goes only to the five first-party apps, and only at
-// the address Core has for them. When that address check fails the token
-// stays home; apps reached through a link are not affected (Core names their
-// address with the token).
+// The person's own token goes only to Kitchen and Day, and only at the address
+// Core has for them. When that address check fails the token stays home; apps
+// reached through a link are not affected (Core names their address with the
+// token), Tasks, Habits and Notes included.
 func TestThePersonsTokenStaysWithTheFirstPartyApps(t *testing.T) {
 	var own, linked atomic.Int32
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
@@ -231,23 +231,24 @@ func TestThePersonsTokenStaysWithTheFirstPartyApps(t *testing.T) {
 		linked.Add(1)
 		writeJSON(w, 200, map[string]any{"line": "2 beds need water", "items": []any{}})
 	})
-	f.declare("tasks", map[string]any{"widget": map[string]any{"title": "Tasks today"}})
 	f.mismatch.Store(true)
 	_, out := get(t, f.hub, "/api/v1/daily", "", f.ann)
 	keys := []string{}
 	for _, raw := range out["sources"].([]any) {
 		keys = append(keys, fmt.Sprint(raw.(map[string]any)["app_key"]))
 	}
-	// Tasks and the garden through their links; Habits, Kitchen and Notes have no adapter to fall back on here.
-	if got := strings.Join(keys, " "); got != "tasks-1 garden-6" {
+	// Everything that offers a widget through its link; Kitchen's adapter is not used here.
+	if got := strings.Join(keys, " "); got != "tasks-1 habits-2 notes-4 garden-6" {
 		t.Fatal("sources", got)
 	}
+	words := []string{}
 	for _, d := range out["destinations"].([]any) {
-		if d.(map[string]any)["kind"] != "garden" {
-			t.Fatal("a hand-written destination at an unregistered address was offered", d)
-		}
+		words = append(words, fmt.Sprint(d.(map[string]any)["capture_kind"]))
 	}
-	if code, _ := f.post(t, f.ann, `{"request_id":"capture-request-0102","app_key":"tasks-1","kind":"task","title":"No"}`); code != 403 {
+	if got := strings.Join(words, " "); got != "task journal note sowing" {
+		t.Fatal("a hand-written destination at an unregistered address was offered:", got)
+	}
+	if code, _ := f.post(t, f.ann, `{"request_id":"capture-request-0102","app_key":"day-5","kind":"moment","text":"No"}`); code != 403 {
 		t.Fatal("capture with the person's token to an unregistered address accepted", code)
 	}
 	if own.Load() != 0 {
@@ -258,30 +259,31 @@ func TestThePersonsTokenStaysWithTheFirstPartyApps(t *testing.T) {
 	}
 }
 
-// Tasks, Habits, Kitchen and Notes are read through their Core link once they
-// offer a widget and the link is on; the hand-written adapter (and with it the
-// person's own token) is used when the link is off.
-func TestFirstPartyAppWithAWidgetUsesTheLink(t *testing.T) {
-	var contract, old atomic.Int32
+// Tasks, Habits and Notes are read only through their Core links. Their old
+// routes are never called, not with the link off (the widget says why, as for
+// any app) and not when an older version answers 404 on the widget route.
+func TestFirstPartyAppsOnlyThroughTheirLinks(t *testing.T) {
+	var contract atomic.Int32
+	missing := atomic.Bool{}
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v1/pocket/widget":
-			contract.Add(1)
 			if r.Header.Get("Authorization") != "Bearer pcx_ann_tasks" {
-				t.Error("Tasks' widget not read with a link token", r.Header.Get("Authorization"))
+				writeJSON(w, 503, map[string]any{})
+				return
+			}
+			contract.Add(1)
+			if missing.Load() {
+				writeJSON(w, 404, map[string]any{"error": "not found"})
+				return
 			}
 			writeJSON(w, 200, map[string]any{"line": "2 due today, 1 late", "metrics": []map[string]any{{"label": "Today", "value": "2"}}, "items": []map[string]any{{"id": "7", "title": "Call the plumber", "url": "/task/7"}}})
-		case "/api/v1/dashboard":
-			old.Add(1)
-			if r.Header.Get("Authorization") != "Bearer pcu_ann" {
-				t.Error("the Tasks adapter did not act as the person", r.Header.Get("Authorization"))
-			}
-			writeJSON(w, 200, map[string]any{"today": 2, "overdue": 1, "done_today": 3, "next": []map[string]any{{"id": 1, "title": "Old style task"}}})
-		default:
+		case "/api/v1/plan":
 			writeJSON(w, 503, map[string]any{})
+		default:
+			t.Error("an old route was called", r.URL.Path, r.Header.Get("Authorization"))
 		}
 	})
-	f.declare("tasks", map[string]any{"widget": map[string]any{"title": "Tasks today"}})
 	_, out := get(t, f.hub, "/api/v1/daily", "", f.ann)
 	src := sourceOf(out, "tasks-1")
 	if src == nil || src["state"] != "ready" || src["title"] != "Tasks today" || src["line"] != "2 due today, 1 late" || len(src["items"].([]any)) != 1 {
@@ -290,44 +292,64 @@ func TestFirstPartyAppWithAWidgetUsesTheLink(t *testing.T) {
 	if got := fmt.Sprint(src["metrics"]); got != "[map[label:Today value:2]]" {
 		t.Error("metrics", got)
 	}
-	if contract.Load() != 1 || old.Load() != 0 {
-		t.Fatal("the hand-written Tasks adapter was used next to the link")
+	// An older Tasks without the route: unavailable, and nothing else is tried.
+	missing.Store(true)
+	_, out = get(t, f.hub, "/api/v1/daily", "", f.ann)
+	if src = sourceOf(out, "tasks-1"); src == nil || src["state"] != "unavailable" || contract.Load() != 2 {
+		t.Fatal("a Tasks without the widget route", src)
 	}
+	// The link off: not asked, listed with the reason, still in its old place.
 	f.setLink("tasks", core.ScopeWidget, "off_person")
 	_, out = get(t, f.hub, "/api/v1/daily", "", f.ann)
-	src = sourceOf(out, "tasks-1")
-	if src == nil || src["state"] != "ready" || len(src["metrics"].([]any)) != 3 || offerOf(out, "tasks-1") != nil {
-		t.Fatal("Tasks with its link off must read as before", src, out["more"])
+	if sourceOf(out, "tasks-1") != nil || contract.Load() != 2 {
+		t.Fatal("Tasks with its link off was asked", out["sources"])
 	}
-	if contract.Load() != 1 || old.Load() != 1 {
-		t.Fatalf("link off: widget route asked %d times, adapter %d times", contract.Load(), old.Load())
+	if offer := offerOf(out, "tasks-1"); offer == nil || offer["title"] != "Tasks today" || !strings.Contains(fmt.Sprint(offer["off"]), "You switched this off in Pocket Core") {
+		t.Fatal("Tasks with its link off does not say why", out["more"])
+	}
+	if first := out["sources"].([]any)[0].(map[string]any); first["app_key"] != "habits-2" {
+		t.Error("the apps Hub has always shown no longer come first", first["app_key"])
 	}
 }
 
-// An older Tasks that Core already lists as offering a widget answers 404 on
-// the route: Hub reads it the old way.
-func TestFirstPartyAppWithoutTheRouteFallsBack(t *testing.T) {
+// Kitchen offers no widget, so its adapter reads the day's meal plan with the
+// person's own token. The day it offers one, the link takes over for good.
+func TestKitchenKeepsItsAdapterUntilItOffersAWidget(t *testing.T) {
 	var contract, old atomic.Int32
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v1/pocket/widget":
-			contract.Add(1)
-			writeJSON(w, 404, map[string]any{"error": "not found"})
-		case "/api/v1/dashboard":
+		switch {
+		case r.URL.Path == "/api/v1/plan":
 			old.Add(1)
-			writeJSON(w, 200, map[string]any{"today": 2, "overdue": 1, "done_today": 3, "next": []map[string]any{{"id": 1, "title": "Old style task"}}})
+			if r.Header.Get("Authorization") != "Bearer pcu_ann" || r.URL.Query().Get("from") != "2026-10-21" || r.URL.Query().Get("to") != "2026-10-21" {
+				t.Error("the Kitchen adapter", r.Header.Get("Authorization"), r.URL.RawQuery)
+			}
+			writeJSON(w, 200, map[string]any{"entries": []map[string]any{{"id": 3, "recipe_title": "Soup", "slot": "dinner"}, {"id": 4, "title": "Toast", "slot": "breakfast", "cooked_at": "2026-10-21T08:00:00Z"}}})
+		case r.URL.Path == "/api/v1/pocket/widget" && r.Header.Get("Authorization") == "Bearer pcx_ann_kitchen":
+			contract.Add(1)
+			writeJSON(w, 200, map[string]any{"line": "Soup tonight", "items": []any{}})
 		default:
 			writeJSON(w, 503, map[string]any{})
 		}
 	})
-	f.declare("tasks", map[string]any{"widget": map[string]any{"title": "Tasks today"}})
-	_, out := get(t, f.hub, "/api/v1/daily", "", f.ann)
-	src := sourceOf(out, "tasks-1")
-	if src == nil || src["state"] != "ready" || len(src["items"].([]any)) != 1 || len(src["metrics"].([]any)) != 3 || len(src["figures"].([]any)) != 3 {
-		t.Fatal("Tasks did not fall back to its own summary", src)
+	_, out := get(t, f.hub, "/api/v1/daily?date=2026-10-21", "", f.ann)
+	src := sourceOf(out, "kitchen-3")
+	if src == nil || src["state"] != "ready" || fmt.Sprint(src["metrics"]) != "[map[label:Planned meals value:2]]" || fmt.Sprint(src["figures"]) != "[map[label:Planned meals value:2]]" {
+		t.Fatal("Kitchen's meal plan", src)
 	}
-	if contract.Load() != 1 || old.Load() != 1 {
-		t.Fatalf("widget route asked %d times, adapter %d times", contract.Load(), old.Load())
+	items := src["items"].([]any)
+	if len(items) != 2 || items[0].(map[string]any)["title"] != "Soup" || items[1].(map[string]any)["done"] != true {
+		t.Fatal("Kitchen's meals", items)
+	}
+	f.declare("kitchen", map[string]any{"widget": map[string]any{"title": "Kitchen today"}})
+	f.s.forgetCapable("ann@example.com")
+	_, out = get(t, f.hub, "/api/v1/daily?date=2026-10-21", "", f.ann)
+	if src = sourceOf(out, "kitchen-3"); src == nil || src["line"] != "Soup tonight" || contract.Load() != 1 || old.Load() != 1 {
+		t.Fatal("Kitchen with a widget of its own", src, contract.Load(), old.Load())
+	}
+	f.setLink("kitchen", core.ScopeWidget, "off_admin")
+	_, out = get(t, f.hub, "/api/v1/daily?date=2026-10-21", "", f.ann)
+	if sourceOf(out, "kitchen-3") != nil || offerOf(out, "kitchen-3") == nil || old.Load() != 1 {
+		t.Fatal("Kitchen with its link off went back to the adapter", out["sources"])
 	}
 }
 
@@ -395,15 +417,18 @@ func TestManifestAsksForEveryApp(t *testing.T) {
 }
 
 // One request asks a bounded number of apps: the ones on the person's Home
-// first, then the first-party four, then the rest by name.
+// first, then the ones Hub has always shown (however it reaches them), then
+// the rest by name.
 func TestDailyAsksABoundedNumberOfApps(t *testing.T) {
-	apps := []personalApp{{Key: "tasks-1", Kind: "tasks", URL: "https://tasks.example"}, {Key: "day-2", Kind: "day", URL: "https://day.example"}, {Key: "notes-3", Kind: "notes", URL: "https://notes.example"}, {Key: "plain-4", Kind: "plain"},
-		{Key: "off-5", Kind: "off", widget: &core.Widget{Title: "Off"}, widgetLink: linkStand{state: "off_admin"}}}
+	on := linkStand{on: true, state: "on"}
+	apps := []personalApp{{Key: "tasks-1", Kind: "tasks", widget: &core.Widget{Title: "Tasks today"}, widgetLink: on}, {Key: "kitchen-2", Kind: "kitchen", URL: "https://kitchen.example"},
+		{Key: "notes-3", Kind: "notes", widget: &core.Widget{Title: "Recent notes"}, widgetLink: on}, {Key: "day-4", Kind: "day", URL: "https://day.example"}, {Key: "plain-5", Kind: "plain"},
+		{Key: "off-6", Kind: "off", widget: &core.Widget{Title: "Off"}, widgetLink: linkStand{state: "off_admin"}}}
 	for i := 0; i < 30; i++ {
 		apps = append(apps, personalApp{Key: fmt.Sprintf("app%02d-%d", i, 10+i), Kind: fmt.Sprintf("app%02d", i), widget: &core.Widget{Title: "A widget"}, widgetLink: linkStand{on: true, state: "on"}})
 	}
-	ask, rest := pickSources(apps, map[string]bool{"app29-39": true, "gone-1": true, "off-5": true})
-	if len(ask) != maxDailySources || len(rest) != 32-maxDailySources {
+	ask, rest := pickSources(apps, map[string]bool{"app29-39": true, "gone-1": true, "off-6": true})
+	if len(ask) != maxDailySources || len(rest) != 33-maxDailySources {
 		t.Fatalf("asked %d, left %d", len(ask), len(rest))
 	}
 	keys := []string{}
@@ -411,10 +436,10 @@ func TestDailyAsksABoundedNumberOfApps(t *testing.T) {
 		keys = append(keys, a.Key)
 	}
 	got := strings.Join(keys, " ")
-	if !strings.HasPrefix(got, "tasks-1 notes-3 app00-10 ") || !strings.HasSuffix(got, " app20-30 app29-39") {
+	if !strings.HasPrefix(got, "tasks-1 kitchen-2 notes-3 app00-10 ") || !strings.HasSuffix(got, " app19-29 app29-39") {
 		t.Error("order or choice of the asked apps", got)
 	}
-	if rest[0].Key != "app21-31" {
+	if rest[0].Key != "app20-30" {
 		t.Error("the apps left out", rest[0].Key)
 	}
 }
@@ -460,7 +485,7 @@ func TestCaptureGoesToAnyAppThatOffersIt(t *testing.T) {
 			dest = d
 		}
 	}
-	if got := strings.Join(words, " "); got != "tasks:task notes:note day:moment garden:sowing" {
+	if got := strings.Join(words, " "); got != "tasks:task habits:journal notes:note day:moment garden:sowing" {
 		t.Fatal("destinations", got)
 	}
 	if dest["label"] != "Sowing" || dest["what"] != "A new row in your sowing diary" || fmt.Sprint(dest["fields"]) != "[title date]" {
@@ -541,59 +566,104 @@ func TestCaptureThroughALinkNeedsAReceiptAndTheLink(t *testing.T) {
 	}
 }
 
-// Notes that offers quick capture gets the line through its link. With the
-// link off, or a Notes that answers 404 on the route (an older version), it
-// gets it the old way, as the person.
-func TestFirstPartyCaptureUsesTheLinkAndFallsBack(t *testing.T) {
-	var contract, old atomic.Int32
+// Tasks, Habits and Notes get a quick line only through their links: with the
+// link off nothing is sent, and an older version that answers 404 is not
+// tried another way. A field the person left empty is not sent, so the app
+// decides (a journal line without a day goes to the app's own today).
+func TestFirstPartyCaptureOnlyThroughTheLink(t *testing.T) {
+	var contract atomic.Int32
 	missing := atomic.Bool{}
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v1/pocket/capture":
-			contract.Add(1)
-			if r.Header.Get("Authorization") != "Bearer pcx_ann_notes" {
-				t.Error("capture not sent with a link token", r.Header.Get("Authorization"))
-			}
-			if missing.Load() {
-				writeJSON(w, 404, map[string]any{"error": "not found"})
-				return
-			}
-			var body map[string]any
-			_ = json.NewDecoder(r.Body).Decode(&body)
+		if r.URL.Path != "/api/v1/pocket/capture" {
+			t.Error("an old route was called", r.URL.Path)
+			return
+		}
+		contract.Add(1)
+		if missing.Load() {
+			writeJSON(w, 404, map[string]any{"error": "not found"})
+			return
+		}
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		switch r.Header.Get("Authorization") {
+		case "Bearer pcx_ann_notes":
 			if body["kind"] != "note" || body["title"] != "An idea" || body["text"] != "For later" {
-				t.Error("capture body", body)
+				t.Error("note body", body)
 			}
 			writeJSON(w, 201, map[string]any{"id": "12", "title": "An idea", "url": "/note/12"})
-		case "/api/v1/notes":
-			old.Add(1)
-			if r.Header.Get("Authorization") != "Bearer pcu_ann" || r.Header.Get("X-Pocket-Source") != "hub" {
-				t.Error("the Notes adapter did not act as the person", r.Header.Get("Authorization"))
+		case "Bearer pcx_ann_habits":
+			if _, dated := body["date"]; dated || body["kind"] != "journal" || body["text"] != "Slept well" {
+				t.Error("journal body", body)
 			}
-			writeJSON(w, 201, map[string]any{"id": 9})
+			writeJSON(w, 201, map[string]any{"id": "2026-11-27", "url": "/journal/2026-11-27"})
 		default:
-			t.Error("unexpected path", r.URL.Path)
+			t.Error("capture not sent with a link token", r.Header.Get("Authorization"))
 		}
 	})
-	f.declare("notes", map[string]any{"capture": map[string]any{"kinds": []map[string]any{{"kind": "note", "label": "Note", "fields": []string{"title"}}}}})
 	body := `{"request_id":"capture-request-0501","app_key":"notes-4","kind":"note","title":"An idea","text":"For later"}`
 	code, out := f.post(t, f.ann, body)
 	if code != 201 || out["id"] != float64(12) || out["item_id"] != "12" || !strings.HasSuffix(fmt.Sprint(out["url"]), "/note/12") {
 		t.Fatal(code, out)
 	}
-	if contract.Load() != 1 || old.Load() != 0 {
-		t.Fatal("the hand-written route was used next to the link")
+	if code, out = f.post(t, f.ann, `{"request_id":"capture-request-0504","app_key":"habits-2","kind":"journal","text":"Slept well"}`); code != 201 || out["item_id"] != "2026-11-27" {
+		t.Fatal("journal line", code, out)
 	}
-	// An older Notes: the route is not there, nothing was kept, the old route takes it.
+	// An older Notes: the route is not there, nothing was kept, and the person is told.
 	missing.Store(true)
 	code, out = f.post(t, f.ann, strings.Replace(body, "0501", "0502", 1))
-	if code != 201 || out["id"] != float64(9) || contract.Load() != 2 || old.Load() != 1 {
-		t.Fatal("no fallback on 404", code, out, contract.Load(), old.Load())
+	if code != 502 || out["status"] != "failed" || contract.Load() != 3 {
+		t.Fatal("a Notes without the capture route", code, out, contract.Load())
 	}
-	// The link switched off: the old route, and the capture route is left alone.
+	// The link switched off: refused with the reason, nothing sent.
 	f.setLink("notes", core.ScopeCapture, "off_admin")
 	code, out = f.post(t, f.ann, strings.Replace(body, "0501", "0503", 1))
-	if code != 201 || out["id"] != float64(9) || contract.Load() != 2 || old.Load() != 2 {
-		t.Fatal("link off", code, out, contract.Load(), old.Load())
+	if code != 403 || !strings.Contains(fmt.Sprint(out["error"]), "Not allowed in Pocket Core yet") || contract.Load() != 3 {
+		t.Fatal("link off", code, out, contract.Load())
+	}
+}
+
+// Day offers no quick capture, so a journal moment goes to its own route with
+// the person's own token, with the day the person picked or none at all.
+func TestJournalMomentGoesToDay(t *testing.T) {
+	var bodies []map[string]any
+	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			writeJSON(w, 503, map[string]any{}) // the day's widgets
+			return
+		}
+		if r.URL.Path != "/api/v1/moments" || r.Header.Get("Authorization") != "Bearer pcu_ann" || r.Header.Get("X-Pocket-Source") != "hub" {
+			t.Error("the moment did not reach Day as the person", r.Method, r.URL.Path, r.Header.Get("Authorization"))
+		}
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		bodies = append(bodies, body)
+		writeJSON(w, 201, map[string]any{"id": len(bodies)})
+	})
+	_, daily := get(t, f.hub, "/api/v1/daily", "", f.ann)
+	found := false
+	for _, raw := range daily["destinations"].([]any) {
+		if d := raw.(map[string]any); d["app_key"] == "day-5" {
+			found = d["capture_kind"] == "moment" && d["label"] == "Journal moment" && fmt.Sprint(d["fields"]) == "[date]"
+		}
+	}
+	if !found {
+		t.Fatal("no journal moment", daily["destinations"])
+	}
+	code, out := f.post(t, f.ann, `{"request_id":"capture-request-0601","app_key":"day-5","kind":"moment","text":"Sea","date":"2026-11-20"}`)
+	if code != 201 || out["id"] != float64(1) {
+		t.Fatal(code, out)
+	}
+	if code, out = f.post(t, f.ann, `{"request_id":"capture-request-0602","app_key":"day-5","kind":"moment","text":"Rain"}`); code != 201 {
+		t.Fatal(code, out)
+	}
+	if code, out = f.post(t, f.ann, `{"request_id":"capture-request-0603","app_key":"day-5","kind":"moment","title":"Only a title"}`); code != 400 || out["error"] != "Write a moment to keep." {
+		t.Fatal("an empty moment", code, out)
+	}
+	if code, out = f.post(t, f.ann, `{"request_id":"capture-request-0604","app_key":"day-5","kind":"task","title":"Not a moment"}`); code != 400 {
+		t.Fatal("Day was given a task", code, out)
+	}
+	if got := fmt.Sprint(bodies); got != "[map[date:2026-11-20 kind:note text:Sea] map[kind:note text:Rain]]" {
+		t.Fatal("moments", got)
 	}
 }
 

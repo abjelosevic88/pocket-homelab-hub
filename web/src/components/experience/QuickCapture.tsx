@@ -14,8 +14,10 @@ const FIRST = [
 type First = typeof FIRST[number]
 // One button (or one line of the "More" list): what it is called, what it takes, and where it can go.
 type Choice = { id: string; label: string; what: string; fields: readonly string[]; targets: Destination[]; first?: First }
+// date stays empty until the person picks a day: the app then decides (an event at 3pm typed in
+// the evening is tomorrow's). Only a journal moment shows and sends today when none is picked.
 type Draft = { request_id: string; app_key: string; choice: string; title: string; text: string; due: string; date: string }
-const fresh = (choice = 'task'): Draft => ({ request_id: crypto.randomUUID(), app_key: '', choice, title: '', text: '', due: '', date: localDay() })
+const fresh = (choice = 'task'): Draft => ({ request_id: crypto.randomUUID(), app_key: '', choice, title: '', text: '', due: '', date: '' })
 
 function choicesFrom(destinations: Destination[]): Choice[] {
   const taken = new Set<Destination>()
@@ -45,6 +47,7 @@ export function QuickCapture() {
   const target = choice.targets.find(d => d.app_key === draft.app_key) || choice.targets[0]
   const has = (field: string) => choice.fields.includes(field)
   const wording = choice.first
+  const day = choice.id === 'moment' ? draft.date || localDay() : draft.date
   const written = (has('title') && draft.title.trim()) || draft.text.trim()
   const change = (patch: Partial<Draft>) => { setDraft(d => ({ ...d, ...patch, request_id: crypto.randomUUID() })); setProblem(''); setSaved(null); setUncertain(false) }
   useEffect(() => {
@@ -71,7 +74,7 @@ export function QuickCapture() {
     setDraft(d => ({ ...d, app_key: target.app_key })); setBusy(true); setProblem('')
     try {
       // Only what this kind takes is sent; words typed for another kind stay in the draft.
-      const attempt = { request_id: draft.request_id, app_key: target.app_key, kind: target.capture_kind, title: has('title') ? draft.title : '', text: draft.text, due: has('due') ? draft.due : '', date: has('date') ? draft.date : '' }
+      const attempt = { request_id: draft.request_id, app_key: target.app_key, kind: target.capture_kind, title: has('title') ? draft.title : '', text: draft.text, due: has('due') ? draft.due : '', date: has('date') ? day : '' }
       const result = await api.post<{ status: string; app_key: string; url?: string }>(`${V1}/capture`, attempt)
       if (result.status !== 'saved') throw Error('No save confirmation received')
       setSaved({ app_key: result.app_key, label: choice.label, url: result.url }); setUncertain(false); void refresh()
@@ -97,7 +100,7 @@ export function QuickCapture() {
         <label className="capture-writing">{wording?.text || (has('title') ? 'Details' : `Your ${lower}`)}<textarea rows={5} maxLength={10000} required={!has('title')} value={draft.text} placeholder={wording?.textHint || 'Write it here…'} onChange={e => change({ text: e.target.value })} /></label>
         <div className="capture-metadata">
         {has('due') && <label>Due date (optional)<input type="date" value={draft.due} onChange={e => change({ due: e.target.value })} /></label>}
-        {has('date') && <label>{wording?.date || 'Day'}<input type="date" value={draft.date} required={choice.id === 'moment'} onChange={e => change({ date: e.target.value })} /></label>}
+        {has('date') && <label>{wording?.date || 'Day (optional)'}<input type="date" value={day} required={choice.id === 'moment'} onChange={e => change({ date: e.target.value })} /></label>}
         <label>Save to<select aria-label="Capture destination" value={target?.app_key || ''} onChange={e => change({ app_key: e.target.value })}>{!choice.targets.length && <option value="">No connected destination</option>}{choice.targets.map(d => <option key={d.app_key} value={d.app_key}>{d.name}</option>)}</select></label>
         {choice.what && <p className="capture-where">{choice.what}</p>}
         </div>

@@ -24,7 +24,7 @@ type dailyFixture struct {
 
 	mu        sync.Mutex
 	appURL    string                    // where the five first-party apps live
-	manifests map[string]map[string]any // what a first-party app declares, by slug
+	manifests map[string]map[string]any // what a first-party app declares, by slug (as today's versions do by default)
 	extra     []extraApp                // apps Hub has no adapter for (Ann's only)
 	links     map[string]string         // "<slug> <scope>" → a state other than "on"
 	unlisted  map[string]bool           // apps linked for Ann that are not on her launcher list
@@ -35,6 +35,20 @@ type dailyFixture struct {
 type extraApp struct {
 	slug, url string
 	manifest  map[string]any
+}
+
+// firstParty are the five apps Hub has always shown, in their old order; their
+// launcher keys are tasks-1, habits-2, kitchen-3, notes-4 and day-5.
+var firstParty = []string{"tasks", "habits", "kitchen", "notes", "day"}
+
+// firstPartyManifests are what today's versions declare: Tasks, Habits and
+// Notes offer a widget and quick capture, Kitchen and Day neither.
+func firstPartyManifests() map[string]map[string]any {
+	return map[string]map[string]any{
+		"tasks":  {"widget": map[string]any{"title": "Tasks today"}, "capture": map[string]any{"kinds": []map[string]any{{"kind": "task", "label": "Task", "fields": []string{"title", "due"}}}}},
+		"habits": {"widget": map[string]any{"title": "Habits today"}, "capture": map[string]any{"kinds": []map[string]any{{"kind": "journal", "label": "Journal line", "fields": []string{"date"}}}}},
+		"notes":  {"widget": map[string]any{"title": "Recent notes"}, "capture": map[string]any{"kinds": []map[string]any{{"kind": "note", "label": "Note", "fields": []string{"title"}}}}},
+	}
 }
 
 // declare sets the manifest Core has for one of the first-party apps. An app
@@ -81,7 +95,7 @@ func (f *dailyFixture) tokens(slug, scope string) int {
 // offered lists, under the lock, every app with its address and manifest.
 func (f *dailyFixture) offered() []extraApp {
 	out := []extraApp{}
-	for _, kind := range personalKinds {
+	for _, kind := range firstParty {
 		out = append(out, extraApp{slug: kind, url: f.appURL, manifest: f.manifests[kind]})
 	}
 	return append(out, f.extra...)
@@ -92,7 +106,7 @@ func (f *dailyFixture) linkState(user string, x extraApp, scope string) string {
 	if x.manifest[strings.TrimPrefix(scope, "pocket:")] == nil {
 		return "not_offered"
 	}
-	if user != "ann@example.com" && !(user == "bob@example.com" && x.slug == "notes") {
+	if f.revoked.Load() || (user != "ann@example.com" && !(user == "bob@example.com" && x.slug == "notes")) {
 		return "not_in_audience"
 	}
 	if state := f.links[x.slug+" "+scope]; state != "" {
@@ -103,7 +117,7 @@ func (f *dailyFixture) linkState(user string, x extraApp, scope string) string {
 
 func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 	t.Helper()
-	f := &dailyFixture{manifests: map[string]map[string]any{}, links: map[string]string{}, unlisted: map[string]bool{}, asked: map[string]int{}}
+	f := &dailyFixture{manifests: firstPartyManifests(), links: map[string]string{}, unlisted: map[string]bool{}, asked: map[string]int{}}
 	// The rule every test keeps: the person's own token never reaches a
 	// capability route, and a link token never reaches another route.
 	app := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +134,7 @@ func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 		case "/api/v1/me/services":
 			services := []map[string]any{}
 			if !f.revoked.Load() {
-				for i, kind := range personalKinds {
+				for i, kind := range firstParty {
 					if r.Header.Get("Authorization") == "Bearer pcu_bob" && kind != "notes" {
 						continue
 					}
@@ -139,7 +153,7 @@ func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 					if f.mismatch.Load() {
 						target = "https://unregistered.example"
 					}
-					services = append(services, map[string]any{"id": len(personalKinds) + i + 1, "type": x.slug, "name": "Pocket " + x.slug, "url": target, "icon": x.url + "/favicon.svg", "pocket": true})
+					services = append(services, map[string]any{"id": len(firstParty) + i + 1, "type": x.slug, "name": "Pocket " + x.slug, "url": target, "icon": x.url + "/favicon.svg", "pocket": true})
 				}
 				f.mu.Unlock()
 			}
@@ -150,11 +164,11 @@ func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 			}
 			apps := []map[string]any{}
 			f.mu.Lock()
-			for i, kind := range personalKinds {
+			for i, kind := range firstParty {
 				apps = append(apps, map[string]any{"id": i + 1, "slug": kind, "public_url": app.URL, "manifest": f.manifests[kind]})
 			}
 			for i, x := range f.extra {
-				apps = append(apps, map[string]any{"id": len(personalKinds) + i + 1, "slug": x.slug, "public_url": x.url, "manifest": x.manifest})
+				apps = append(apps, map[string]any{"id": len(firstParty) + i + 1, "slug": x.slug, "public_url": x.url, "manifest": x.manifest})
 			}
 			f.mu.Unlock()
 			writeJSON(w, 200, apps)
@@ -249,23 +263,32 @@ func (f *dailyFixture) post(t *testing.T, cookie, body string) (int, map[string]
 	}
 	return res.StatusCode, out
 }
+
+// Tasks, Habits and Notes are read through their links, Kitchen with its
+// adapter; each person sees only their own, and a person Core no longer lets
+// use an app is not asked at all.
 func TestDailyPersonalSourcesAndRevocation(t *testing.T) {
 	var calls atomic.Int32
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
 		token := r.Header.Get("Authorization")
-		if token != "Bearer pcu_ann" && token != "Bearer pcu_bob" {
-			t.Errorf("personal request sent wrong bearer %q", token)
-		}
 		switch r.URL.Path {
-		case "/api/v1/dashboard":
-			writeJSON(w, 200, map[string]any{"today": 2, "overdue": 1, "done_today": 3, "next": []map[string]any{{"id": 1, "title": "Ann's task"}}})
-		case "/api/v1/days/2026-10-21":
-			writeJSON(w, 200, map[string]any{"done": 1, "total": 2, "habits": []map[string]any{{"id": 1, "name": "A walk", "scheduled": true, "status": 1}}, "journal": "Private journal must not be returned"})
+		case "/api/v1/pocket/widget":
+			switch token {
+			case "Bearer pcx_ann_tasks":
+				writeJSON(w, 200, map[string]any{"line": "1 due today, 1 late", "metrics": []map[string]any{{"label": "Today", "value": "2"}, {"label": "Overdue", "value": "1"}, {"label": "Finished today", "value": "3"}}, "items": []map[string]any{{"id": "1", "title": "Ann's task", "url": "/task/1"}}})
+			case "Bearer pcx_ann_habits":
+				writeJSON(w, 200, map[string]any{"line": "1 left today", "metrics": []map[string]any{{"label": "Done", "value": "1"}, {"label": "Scheduled", "value": "2"}}, "items": []map[string]any{{"id": "1", "title": "A walk", "done": true}}, "journal": "Private journal must not be returned"})
+			case "Bearer pcx_ann_notes", "Bearer pcx_bob_notes":
+				writeJSON(w, 200, map[string]any{"items": []map[string]any{{"id": "2", "title": strings.TrimPrefix(token, "Bearer ") + " note", "content": "Secret full note content"}}})
+			default:
+				t.Error("widget read with", token)
+			}
 		case "/api/v1/plan":
+			if token != "Bearer pcu_ann" {
+				t.Errorf("Kitchen read with %q", token)
+			}
 			writeJSON(w, 503, map[string]any{"error": "private backend detail"})
-		case "/api/v1/notes":
-			writeJSON(w, 200, []map[string]any{{"id": 2, "title": token + " note", "content": "Secret full note content"}})
 		default:
 			t.Error("unexpected app path", r.URL.Path)
 		}
@@ -275,25 +298,37 @@ func TestDailyPersonalSourcesAndRevocation(t *testing.T) {
 		t.Fatal(code, out)
 	}
 	sources := out["sources"].([]any)
-	if len(sources) != 4 {
-		t.Fatal(sources)
+	keys := []string{}
+	for _, raw := range sources {
+		keys = append(keys, fmt.Sprint(raw.(map[string]any)["app_key"]))
+	}
+	if got := strings.Join(keys, " "); got != "tasks-1 habits-2 kitchen-3 notes-4" {
+		t.Fatal("sources, in the order Hub has always shown them:", got)
 	}
 	if sources[2].(map[string]any)["state"] != "unavailable" {
 		t.Fatal("one source failure must stay independent")
+	}
+	// The gallery's Tasks and Habits widgets and the habit ring look for these numbers by name.
+	if got := fmt.Sprint(sources[0].(map[string]any)["metrics"]); got != "[map[label:Today value:2] map[label:Overdue value:1] map[label:Finished today value:3]]" {
+		t.Error("Tasks numbers", got)
+	}
+	if got := fmt.Sprint(sources[1].(map[string]any)["metrics"]); got != "[map[label:Done value:1] map[label:Scheduled value:2]]" {
+		t.Error("Habits numbers", got)
 	}
 	raw, _ := json.Marshal(out)
 	if strings.Contains(string(raw), "Secret full") || strings.Contains(string(raw), "Private journal") || strings.Contains(string(raw), "private backend") {
 		t.Fatal("summary leaked extra app fields")
 	}
 	_, bob := get(t, f.hub, "/api/v1/daily?date=2026-10-21", "", f.bob)
-	if len(bob["sources"].([]any)) != 1 {
-		t.Fatal("Bob received apps outside his audience")
+	if len(bob["sources"].([]any)) != 1 || sourceOf(bob, "notes-4") == nil {
+		t.Fatal("Bob received apps outside his audience", bob["sources"])
 	}
 	raw, _ = json.Marshal(bob)
-	if strings.Contains(string(raw), "Ann's") || strings.Contains(string(raw), "pcu_ann") {
+	if strings.Contains(string(raw), "Ann's") || strings.Contains(string(raw), "pcx_ann") || strings.Contains(string(raw), "pcu_ann") {
 		t.Fatal("cross-account summary leak")
 	}
 	f.revoked.Store(true)
+	f.s.forgetCapable("ann@example.com")
 	before := calls.Load()
 	_, out = get(t, f.hub, "/api/v1/daily", "", f.ann)
 	if len(out["sources"].([]any)) != 0 || calls.Load() != before {
@@ -309,19 +344,19 @@ func TestDailyPersonalSourcesAndRevocation(t *testing.T) {
 func TestCaptureDeduplicatesAndRechecksAccess(t *testing.T) {
 	var writes atomic.Int32
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" || r.URL.Path != "/api/v1/tasks" {
+		if r.Method != "POST" || r.URL.Path != "/api/v1/pocket/capture" {
 			t.Error("unexpected mutation", r.Method, r.URL.Path)
 		}
-		if r.Header.Get("Authorization") != "Bearer pcu_ann" {
+		if r.Header.Get("Authorization") != "Bearer pcx_ann_tasks" {
 			t.Error("wrong principal")
 		}
 		var body map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&body)
-		if body["title"] != "Call mum" || body["due"] != "2026-10-22" {
+		if body["kind"] != "task" || body["title"] != "Call mum" || body["due"] != "2026-10-22" {
 			t.Error("capture fields lost", body)
 		}
 		writes.Add(1)
-		writeJSON(w, 201, map[string]any{"id": 42, "title": "Call mum"})
+		writeJSON(w, 201, map[string]any{"id": "42", "title": "Call mum", "url": "/task/42"})
 	})
 	body := `{"request_id":"capture-request-0001","app_key":"tasks-1","kind":"task","title":"Call mum","due":"2026-10-22"}`
 	for i := 0; i < 2; i++ {
@@ -340,6 +375,7 @@ func TestCaptureDeduplicatesAndRechecksAccess(t *testing.T) {
 		t.Fatal("wrong audience allowed")
 	}
 	f.revoked.Store(true)
+	f.s.forgetCapable("ann@example.com")
 	if code, _ := f.post(t, f.ann, body); code != 403 {
 		t.Fatal("receipt returned after destination revoked")
 	}
@@ -372,29 +408,46 @@ func TestCaptureUnknownOutcomeNeverRetriesMutation(t *testing.T) {
 		t.Fatal("interrupted capture was resent")
 	}
 }
+
+// The person's own token goes to Kitchen and Day only at the address Core has
+// for them, and never follows a redirect.
 func TestPersonalDestinationsMustMatchAndCannotRedirect(t *testing.T) {
-	var leaked atomic.Int32
+	var leaked, own atomic.Int32
 	trap := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { leaked.Add(1) }))
 	defer trap.Close()
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/v1/pocket/") {
+			writeJSON(w, 503, map[string]any{})
+			return
+		}
+		own.Add(1)
 		http.Redirect(w, r, trap.URL, http.StatusTemporaryRedirect)
 	})
 	_, out := get(t, f.hub, "/api/v1/daily", "", f.ann)
-	for _, v := range out["sources"].([]any) {
-		if v.(map[string]any)["state"] != "unavailable" {
-			t.Fatal("redirect accepted")
-		}
+	if src := sourceOf(out, "kitchen-3"); src == nil || src["state"] != "unavailable" {
+		t.Fatal("redirect accepted", src)
 	}
-	if leaked.Load() != 0 {
-		t.Fatal("token followed a redirect")
+	if code, out := f.post(t, f.ann, `{"request_id":"capture-request-0005","app_key":"day-5","kind":"moment","text":"A walk"}`); code != 502 || out["status"] != "unknown" {
+		t.Fatal("a redirected moment", code, out)
+	}
+	if leaked.Load() != 0 || own.Load() != 2 {
+		t.Fatal("token followed a redirect", leaked.Load(), own.Load())
 	}
 	f.mismatch.Store(true)
 	_, out = get(t, f.hub, "/api/v1/daily", "", f.ann)
-	if len(out["sources"].([]any)) != 0 {
+	if sourceOf(out, "kitchen-3") != nil {
 		t.Fatal("unregistered origin accepted")
 	}
-	if code, _ := f.post(t, f.ann, `{"request_id":"capture-request-0003","app_key":"tasks-1","kind":"task","title":"No"}`); code != 403 {
+	for _, d := range out["destinations"].([]any) {
+		if d.(map[string]any)["kind"] == "day" {
+			t.Fatal("a moment at an unregistered address was offered", d)
+		}
+	}
+	if code, _ := f.post(t, f.ann, `{"request_id":"capture-request-0003","app_key":"day-5","kind":"moment","text":"No"}`); code != 403 {
 		t.Fatal("unregistered capture destination accepted")
+	}
+	if own.Load() != 2 {
+		t.Fatal("the person's token left for an unregistered address")
 	}
 	for _, raw := range []string{"http://example.com", "https://user:pass@example.com", "https://example.com?token=1", "https://example.com#x", "file:///tmp/private"} {
 		if approvedAppURL(raw) != "" {
@@ -405,8 +458,7 @@ func TestPersonalDestinationsMustMatchAndCannotRedirect(t *testing.T) {
 func TestCaptureSameKeyIsPrivatePerPerson(t *testing.T) {
 	var writes atomic.Int32
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) {
-		writes.Add(1)
-		writeJSON(w, 201, map[string]any{"id": writes.Load()})
+		writeJSON(w, 201, map[string]any{"id": fmt.Sprint(writes.Add(1))})
 	})
 	body := `{"request_id":"same-request-key-0004","app_key":"notes-4","kind":"note","text":"A thought"}`
 	for i, cookie := range []string{f.ann, f.bob} {
@@ -423,9 +475,12 @@ func TestCaptureSameKeyIsPrivatePerPerson(t *testing.T) {
 func TestDailyDoesNotTurnMalformedResponsesIntoZeroCounts(t *testing.T) {
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]any{}) })
 	_, out := get(t, f.hub, "/api/v1/daily", "", f.ann)
+	if src := sourceOf(out, "kitchen-3"); src == nil || src["state"] != "unavailable" {
+		t.Fatal("a meal plan without entries became an empty day", src)
+	}
+	// An empty widget is a real answer, but it never grows numbers of its own.
 	for _, raw := range out["sources"].([]any) {
-		source := raw.(map[string]any)
-		if source["state"] != "unavailable" || len(source["metrics"].([]any)) != 0 {
+		if source := raw.(map[string]any); len(source["metrics"].([]any)) != 0 || len(source["figures"].([]any)) != 0 {
 			t.Fatal("malformed app response became invented data", source)
 		}
 	}
@@ -439,7 +494,7 @@ func TestCaptureInFlightDuplicateIsNotSent(t *testing.T) {
 			close(entered)
 			<-release
 		}
-		writeJSON(w, 201, map[string]any{"id": 77})
+		writeJSON(w, 201, map[string]any{"id": "77"})
 	})
 	body := `{"request_id":"concurrent-request-0001","app_key":"tasks-1","kind":"task","title":"Once only"}`
 	done := make(chan int, 1)
@@ -463,7 +518,7 @@ func TestCaptureInFlightDuplicateIsNotSent(t *testing.T) {
 
 func TestCaptureRequiresARecordReceipt(t *testing.T) {
 	f := dailySetup(t, func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 201, map[string]any{}) })
-	code, out := f.post(t, f.ann, `{"request_id":"missing-receipt-0001","app_key":"notes-4","kind":"note","text":"An idea"}`)
+	code, out := f.post(t, f.ann, `{"request_id":"missing-receipt-0001","app_key":"day-5","kind":"moment","text":"A walk by the sea"}`)
 	if code != 502 || out["status"] != "unknown" {
 		t.Fatal("missing receipt reported as saved", code, out)
 	}

@@ -27,12 +27,19 @@ import (
 // with a link token that works only in that app, for that one route, for a few
 // minutes (WidgetIn, CaptureIn).
 //
-// The five first-party apps below also have a hand-written adapter that calls
-// the app with the person's own Core token. That token goes only to those
-// apps, only on their old routes, and only at the address the person's list and
-// Core's registry agree on. It is never sent to a capability route.
+// Two first-party apps offer neither yet, so they keep a hand-written adapter
+// that calls the app with the person's own Core token: Kitchen's meal plan as
+// a widget and Day's journal moment as a quick line. That token goes only to
+// those two apps, only on their old routes, and only at the address the
+// person's list and Core's registry agree on. It is never sent to a capability
+// route, and an adapter steps aside for good once its app offers the same thing
+// through Core (a link that is off then says why, as for any app).
 var personalAppHTTP = &http.Client{Timeout: 8 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
-var personalKinds = []string{"tasks", "habits", "kitchen", "notes", "day"}
+var personalKinds = []string{"kitchen", "day"}
+
+// firstApps are the apps Hub has always shown first, in their old order, however
+// Hub reaches them: they stay at the top of Today and are asked before the rest.
+var firstApps = []string{"tasks", "habits", "kitchen", "notes", "day"}
 
 const (
 	// maxDailySources is how many apps one /daily request asks. The rest are
@@ -56,7 +63,7 @@ type personalApp struct {
 	// but not on their launcher list; empty when the list has it.
 	AppURL string `json:"app_url,omitempty"`
 	// URL is the address the hand-written adapters call with the person's own
-	// token. It is set only for the first-party apps that passed the address check.
+	// token. It is set only for Kitchen and Day, once they passed the address check.
 	URL string `json:"-"`
 	// public is the address of the app as Core has it; addresses the app sends must be inside it.
 	public string
@@ -118,8 +125,9 @@ type dailyOffer struct {
 	Off   string `json:"off,omitempty"`
 }
 
-func hardWired(kind string) int {
-	for i, k := range personalKinds {
+// firstRank is the app's place among firstApps, or -1.
+func firstRank(kind string) int {
+	for i, k := range firstApps {
 		if k == kind {
 			return i
 		}
@@ -127,9 +135,10 @@ func hardWired(kind string) int {
 	return -1
 }
 
-// hardSource reports whether a hand-written adapter can read the app's day.
+// hardSource reports whether the hand-written adapter reads the app's widget:
+// Kitchen, at the address Core has for it, while it offers no widget of its own.
 func (a personalApp) hardSource() bool {
-	return a.URL != "" && hardWired(a.Kind) >= 0 && a.Kind != "day"
+	return a.URL != "" && a.Kind == "kitchen" && a.widget == nil
 }
 
 // linkedWidget reports whether the app's widget can be read through a Core link now.
@@ -251,7 +260,7 @@ func (s *Server) forgetCapable(email string) {
 }
 
 // personalApps lists the apps Hub may talk to for this person, and returns the
-// person's own Core token for the hand-written adapters.
+// person's own Core token for the hand-written adapters (Kitchen and Day).
 func (s *Server) personalApps(ctx context.Context, p *principal) ([]personalApp, string, error) {
 	token, err := s.userCoreToken(ctx, p)
 	if err != nil {
@@ -268,8 +277,8 @@ func (s *Server) personalApps(ctx context.Context, p *principal) ([]personalApp,
 	}
 	out := []personalApp{}
 	at := map[string]int{} // slug → index in out
-	// The first-party apps, for the hand-written adapters: on the person's list,
-	// and registered with Core at exactly that address.
+	// Kitchen and Day, for the hand-written adapters: on the person's list, and
+	// registered with Core at exactly that address.
 	for _, kind := range personalKinds {
 		for _, sv := range services {
 			if !sv.Pocket || sv.Type != kind {
@@ -330,9 +339,9 @@ func (s *Server) personalApps(ctx context.Context, p *principal) ([]personalApp,
 		app := linked(a)
 		app.capture, app.captureLink = a.Capture, linkStand{on: a.On, state: a.State}
 	}
-	// The apps Hub has always known first, in their old order; the rest by name.
+	// The apps Hub has always shown first, in their old order; the rest by name.
 	sort.SliceStable(out, func(i, j int) bool {
-		ri, rj := hardWired(out[i].Kind), hardWired(out[j].Kind)
+		ri, rj := firstRank(out[i].Kind), firstRank(out[j].Kind)
 		if ri < 0 && rj < 0 {
 			return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name)
 		}
@@ -389,8 +398,9 @@ func validDay(date string) bool {
 }
 
 // pickSources chooses which apps this request asks: the ones the person has on
-// Home (want) first, then the apps Hub has always shown, then the rest by
-// name, up to maxDailySources. Both lists keep the apps' usual order.
+// Home (want) first, then the apps Hub has always shown (their widgets in the
+// gallery look for them), then the rest by name, up to maxDailySources. Both
+// lists keep the apps' usual order.
 func pickSources(apps []personalApp, want map[string]bool) (ask, rest []personalApp) {
 	var candidates []personalApp
 	for _, app := range apps {
@@ -402,7 +412,7 @@ func pickSources(apps []personalApp, want map[string]bool) (ask, rest []personal
 		switch {
 		case want[app.Key]:
 			return 0
-		case app.hardSource():
+		case firstRank(app.Kind) >= 0:
 			return 1
 		}
 		return 2
@@ -509,33 +519,18 @@ func widgetWords(app personalApp) (title, what string) {
 	return oneLine(app.widget.Title, 80), oneLine(app.widget.What, 200)
 }
 
-// useHardWired reports whether a failed call through a Core link leaves the
-// hand-written adapter as the way to go: Core has just refused the link, or
-// the app that runs is older than its manifest and does not serve the route.
-func useHardWired(err error) bool {
-	var off *core.LinkError
-	var refused *core.CapabilityError
-	if errors.As(err, &off) {
-		return true
-	}
-	return errors.As(err, &refused) && (refused.Status == http.StatusNotFound || refused.Status == http.StatusMethodNotAllowed)
-}
-
 // loadSource fills one app's part of the day: through the Core link when the
 // app offers a widget and the link is on for the person, else with the
-// hand-written adapter (first-party apps only, with the person's own token).
+// hand-written adapter (Kitchen only, with the person's own token).
 func (s *Server) loadSource(ctx context.Context, dst *dailySource, email, token, date string) error {
 	app := dst.personalApp
 	if app.linkedWidget() {
-		err := s.loadWidget(ctx, dst, email)
-		if err == nil || !app.hardSource() || !useHardWired(err) {
-			return err
-		}
+		return s.loadWidget(ctx, dst, email)
 	}
 	if !app.hardSource() {
 		return errors.New("the app has no widget for this person")
 	}
-	if err := loadDailySource(ctx, dst, token, date); err != nil {
+	if err := loadMealPlan(ctx, dst, token, date); err != nil {
 		return err
 	}
 	for _, m := range dst.Metrics {
@@ -588,97 +583,26 @@ func (s *Server) loadWidget(ctx context.Context, dst *dailySource, email string)
 	return nil
 }
 
-func loadDailySource(ctx context.Context, dst *dailySource, token, date string) error {
-	switch dst.Kind {
-	case "tasks":
-		var out struct {
-			Today     *int `json:"today"`
-			Overdue   *int `json:"overdue"`
-			DoneToday *int `json:"done_today"`
-			Next      []struct {
-				ID    int64   `json:"id"`
-				Title string  `json:"title"`
-				Due   *string `json:"due"`
-			} `json:"next"`
-		}
-		if _, err := personalRequest(ctx, dst.personalApp, token, "GET", "/dashboard", nil, &out); err != nil {
-			return err
-		}
-		if out.Today == nil || out.Overdue == nil || out.DoneToday == nil {
-			return errors.New("incomplete task summary")
-		}
-		dst.Message = "Dates follow your Tasks time zone."
-		dst.Metrics = []dailyMetric{{"Today", *out.Today}, {"Overdue", *out.Overdue}, {"Finished today", *out.DoneToday}}
-		for _, item := range out.Next {
-			detail := ""
-			if item.Due != nil {
-				detail = *item.Due
-			}
-			dst.Items = append(dst.Items, dailyItem{ID: item.ID, Title: item.Title, Detail: detail})
-		}
-	case "habits":
-		var out struct {
-			Done   *int `json:"done"`
-			Total  *int `json:"total"`
-			Habits []struct {
-				ID        int64  `json:"id"`
-				Name      string `json:"name"`
-				Status    int    `json:"status"`
-				Scheduled bool   `json:"scheduled"`
-				Streak    int    `json:"streak"`
-			} `json:"habits"`
-		}
-		if _, err := personalRequest(ctx, dst.personalApp, token, "GET", "/days/"+date, nil, &out); err != nil {
-			return err
-		}
-		if out.Done == nil || out.Total == nil {
-			return errors.New("incomplete habit summary")
-		}
-		dst.Metrics = []dailyMetric{{"Done", *out.Done}, {"Scheduled", *out.Total}}
-		for _, item := range out.Habits {
-			if item.Scheduled {
-				detail := "Not checked in"
-				if item.Status == 1 {
-					detail = "Done"
-				} else if item.Status == -1 {
-					detail = "Missed"
-				}
-				dst.Items = append(dst.Items, dailyItem{ID: item.ID, Title: item.Name, Detail: detail, Done: item.Status == 1})
-			}
-		}
-	case "kitchen":
-		var out struct {
-			Entries []struct {
-				ID          int64  `json:"id"`
-				Title       string `json:"title"`
-				RecipeTitle string `json:"recipe_title"`
-				Slot        string `json:"slot"`
-				CookedAt    string `json:"cooked_at"`
-			} `json:"entries"`
-		}
-		if _, err := personalRequest(ctx, dst.personalApp, token, "GET", "/plan?from="+date+"&to="+date, nil, &out); err != nil {
-			return err
-		}
-		if out.Entries == nil {
-			return errors.New("incomplete meal plan")
-		}
-		dst.Metrics = []dailyMetric{{"Planned meals", len(out.Entries)}}
-		for _, item := range out.Entries {
-			dst.Items = append(dst.Items, dailyItem{ID: item.ID, Title: firstNonEmpty(item.RecipeTitle, item.Title, "Untitled meal"), Detail: item.Slot, Done: item.CookedAt != ""})
-		}
-	case "notes":
-		var out []struct {
-			ID       int64  `json:"id"`
-			Title    string `json:"title"`
-			Category string `json:"category"`
-			Modified int64  `json:"modified"`
-		}
-		if _, err := personalRequest(ctx, dst.personalApp, token, "GET", "/notes?sort=modified&limit=6", nil, &out); err != nil {
-			return err
-		}
-		for _, item := range out {
-			dst.Items = append(dst.Items, dailyItem{ID: item.ID, Title: firstNonEmpty(item.Title, "Untitled note"), Detail: firstNonEmpty(item.Category, "Notes")})
-		}
+// loadMealPlan reads Kitchen's plan for the day with the person's own token.
+func loadMealPlan(ctx context.Context, dst *dailySource, token, date string) error {
+	var out struct {
+		Entries []struct {
+			ID          int64  `json:"id"`
+			Title       string `json:"title"`
+			RecipeTitle string `json:"recipe_title"`
+			Slot        string `json:"slot"`
+			CookedAt    string `json:"cooked_at"`
+		} `json:"entries"`
+	}
+	if _, err := personalRequest(ctx, dst.personalApp, token, "GET", "/plan?from="+date+"&to="+date, nil, &out); err != nil {
+		return err
+	}
+	if out.Entries == nil {
+		return errors.New("incomplete meal plan")
+	}
+	dst.Metrics = []dailyMetric{{"Planned meals", len(out.Entries)}}
+	for _, item := range out.Entries {
+		dst.Items = append(dst.Items, dailyItem{ID: item.ID, Title: firstNonEmpty(item.RecipeTitle, item.Title, "Untitled meal"), Detail: item.Slot, Done: item.CookedAt != ""})
 	}
 	if len(dst.Items) > 6 {
 		dst.Items = dst.Items[:6]

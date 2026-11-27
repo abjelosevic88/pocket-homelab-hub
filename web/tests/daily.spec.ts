@@ -65,6 +65,30 @@ test('journal capture uses the selected day and an available Day destination', a
   expect(harness.captures[0]).toMatchObject({ kind: 'moment', app_key: 'day-7', date: '2026-10-20', text: 'A beautiful walk after dinner.' })
 })
 
+test('a day is sent only when the person picks one, except for a journal moment, which keeps today', async ({ page, harness }) => {
+  harness.apps.push({ ...harness.apps[0], id: 7, key: 'day-7', type: 'day', name: 'Pocket Day', url: 'https://day.pocket.test/', open_url: 'https://day.pocket.test/' })
+  harness.apps.push({ ...harness.apps[0], id: 8, key: 'calendar-8', type: 'calendar', name: 'Pocket Calendar', url: 'https://calendar.pocket.test/', open_url: 'https://calendar.pocket.test/' })
+  harness.daily.destinations.push({ app_key: 'day-7', kind: 'day', name: 'Pocket Day', capture_kind: 'moment', label: 'Journal moment', fields: ['date'] })
+  harness.daily.destinations.push({ app_key: 'calendar-8', kind: 'calendar', name: 'Pocket Calendar', capture_kind: 'event', label: 'Event', fields: ['title', 'date'] })
+  await page.goto(origin + '/today')
+  await page.getByRole('button', { name: /Save a memory/ }).click()
+  const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
+  await expect(page.getByLabel('Day to remember')).toHaveValue(today)
+  await page.getByRole('combobox', { name: 'More things to add' }).selectOption({ label: 'Event' })
+  await expect(page.getByLabel('Day (optional)', { exact: true })).toHaveValue('')
+  await page.getByLabel('Title', { exact: true }).fill('Dentist 3pm')
+  await page.getByRole('button', { name: 'Save event', exact: true }).click()
+  await expect(page.getByText('Event saved.', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Add another', exact: true }).click()
+  await page.locator('.capture-kinds button', { hasText: 'Journal moment' }).click()
+  await page.getByLabel('Your moment').fill('Rain all day.')
+  await page.getByRole('button', { name: 'Save journal moment', exact: true }).click()
+  await expect(page.getByText('Journal moment saved.', { exact: true })).toBeVisible()
+  expect(harness.captures).toHaveLength(2)
+  expect(harness.captures[0]).toMatchObject({ app_key: 'calendar-8', kind: 'event', title: 'Dentist 3pm', date: '' })
+  expect(harness.captures[1]).toMatchObject({ app_key: 'day-7', kind: 'moment', date: today })
+})
+
 test('an uncertain capture keeps the same request identity when checking its receipt', async ({ page, context, harness }) => {
   const attempts: any[] = []
   await context.route('**/api/v1/capture', async route => {

@@ -28,6 +28,6 @@ export function ConnectedWidget({ widget, configure }: { widget: HomeWidget; con
       <div className="w-live-items">{source.items.slice(0, rows).map((item, i) => <button key={`${item.id}-${i}`} onClick={() => openApp(source, item.url)}><span>{item.done ? '✓' : '·'}</span><span>{item.title}</span></button>)}</div>
       {!source.items.length && !source.line && <p className="w-live-empty">{empty[source.kind] || 'Nothing to show right now.'}</p>}
     </>}
-    <span className="w-footnote">{source ? `${source.name} · ${source.kind === 'tasks' && source.message ? 'app time zone' : 'your account'}` : 'From your connected apps'}</span>
+    <span className="w-footnote">{source ? `${source.name} · ${source.kind === 'tasks' ? 'app time zone' : 'your account'}` : 'From your connected apps'}</span>
   </>
 }

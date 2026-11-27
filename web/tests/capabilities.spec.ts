@@ -104,7 +104,9 @@ test('quick capture offers what each app says it keeps, with only the fields it 
   await expect(page.locator('.capture-panel')).toContainText('A new row in your sowing diary')
   await expect(page.getByRole('combobox', { name: 'Capture destination' })).toHaveValue('garden-9')
   await page.getByLabel('Details').fill('Second bed')
-  await page.getByLabel('Day', { exact: true }).fill('2026-10-21')
+  // No day is filled in for the person: an empty one lets the app decide.
+  await expect(page.getByLabel('Day (optional)', { exact: true })).toHaveValue('')
+  await page.getByLabel('Day (optional)', { exact: true }).fill('2026-10-21')
   await page.getByRole('button', { name: 'Save sowing', exact: true }).click()
   await expect(page.getByText('Sowing saved.', { exact: true })).toBeVisible()
   expect(harness.captures).toHaveLength(1)

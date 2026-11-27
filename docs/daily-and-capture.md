@@ -2,10 +2,10 @@
 
 Today brings together what the signed-in person's apps have for them. It is available in the main navigation and from Home (which shows the first six cards). The gallery also offers **Tasks today**, **Habit progress**, **Meal plan** and **Recent notes** widgets, and one widget for every other app that has a summary. Existing home layouts are preserved; people choose what to add.
 
-- Tasks: actual today, overdue and completed-today counts, plus the app's next tasks. Dates follow the person's Tasks time zone.
-- Habits: scheduled habits, check-in state and done/total for the browser's local date.
-- Kitchen: today's planned meals, using the browser's local date.
-- Notes: six recently modified note titles and their folders, without full note contents.
+- Tasks (its own widget, through its link): today, overdue and finished-today counts (`Today`, `Overdue`, `Finished today`), plus what is due and next. Dates follow the person's Tasks time zone.
+- Habits (its own widget, through its link): today's habits, the ones still to do first, and done/total (`Done`, `Scheduled`, which the habit ring reads by name). Dates follow Habits' own today.
+- Kitchen (hand-written adapter): today's planned meals, using the browser's local date.
+- Notes (its own widget, through its link): recently changed notes, pinned ones first, without full note contents.
 
 ## Any app that says so
 
@@ -39,7 +39,7 @@ What `/daily` answers for such an app, next to the fields it always had:
 - A capture answers `{status: "saved", app_key, kind, id, item_id, title, url}`; `id` stays a number (0 when the app's id is not one) and `item_id` is the app's own id. When the app answers 400, its sentence is passed on as `{status: "failed", error}` with status 400, so the person reads what to fix. When Core refuses the token (the link was switched off a moment ago), nothing is sent and the receipt says which switch it is.
 - In the capture window the task, the note and the journal moment come first; everything else is under **More**, grouped by app.
 
-Tasks, Habits, Kitchen, Notes and Day have a hand-written adapter (below). It is used for a version of the app that does not offer the capability, and for a person whose link to the app is off. When the app offers it and the link is on, Hub uses the link only. Two cases still end at the adapter: Core refuses the token (the link was switched off since Hub last asked), or the route answers 404 or 405 (Core's copy of the manifest is ahead of the version that runs). A task, a note and a journal moment keep their hand-written route in the same way.
+Tasks, Habits and Notes offer both and are reached only through their links, like any other app: with a link off their widget says why and quick capture leaves them out, and an older version that answers 404 reads as unavailable. Two apps offer neither yet and keep a hand-written adapter (below): Kitchen's meal plan as its widget, and a journal moment in Day as quick capture. An adapter is used only while its app offers nothing of the kind through Core; once it does, the link takes over for good. Tasks, Habits, Kitchen, Notes and Day still come first on Today, in that order, and are asked before other apps.
 
 Summaries refresh once a minute while the window is visible and on returning to it; Refresh today requests another read. Each source has its own unavailable state, rather than silently turning failure into zero counts. No personal summary is cached on the Hub server. The browser holds only the current signed-in session's summary. Cards and widgets open the corresponding app inside the persistent workspace, at the row's own address when the app sent one; they do not complete tasks or check in habits inline.
 
@@ -47,7 +47,9 @@ Summaries refresh once a minute while the window is visible and on returning to 
 
 - A task in Pocket Tasks, with a title, optional details and an optional due date. The app chooses its normal destination list.
 - A note in Pocket Notes, with a title and body.
-- A journal moment in Pocket Day, with text and a selected date.
+- A journal moment in Pocket Day, with text and a date (today unless the person picks another).
+
+A date is sent only when the person picks one. Left empty, the app decides: Pocket Calendar puts "Dentist 3pm" typed in the evening on tomorrow, not in the past, and Pocket Habits adds a journal line to its own today.
 
 Anything else an app declares it keeps is offered under **More**, with the app's own label and only the fields that kind takes.
 
@@ -59,13 +61,13 @@ The customer chooses the type and sees the destination before saving. This is a 
 
 **Through a Core link (any app that offers a widget or quick capture).** Hub's manifest carries two rules, "this scope in every app that offers it": `pocket:widget` and `pocket:capture`. An admin switches each rule on once in Pocket Core → Links → Pocket Hub; Core then keeps a link per app, new apps included. Each link has its own switch for the box (same page) and for each person (Pocket Core → Settings → Apps acting for me). For every read and every capture Hub asks Core for a fresh link token for the person's Core email: it works only in that app, only for that scope (one route, one method), for five minutes, and Core refuses it the moment a switch is off. Core names the app's address with the token. Hub never keeps a token. The app records "hub" as the acting app itself.
 
-**With the person's own Core token (Tasks, Habits, Kitchen, Notes and Day only).** The hand-written adapters act as a first-party client with the person's own token, as the companion app does. That token works as the person in every app, so it goes nowhere else: never to a capability route (`/api/v1/pocket/*`), never to an app outside these five. Before each use Hub fetches the person's Core service audience and the registered app list; the service must be marked Pocket and its public base URL must exactly match the registered app. Only HTTPS destinations are supported, except loopback HTTP for local development. URLs containing userinfo, a query or a fragment are rejected. Redirects are never followed with the person's token.
+**With the person's own Core token (Kitchen and Day only).** The two hand-written adapters act as a first-party client with the person's own token, as the companion app does. That token works as the person in every app, so it goes nowhere else: never to a capability route (`/api/v1/pocket/*`), never to another app. Before each use Hub fetches the person's Core service audience and the registered app list; the service must be marked Pocket and its public base URL must exactly match the registered app. Only HTTPS destinations are supported, except loopback HTTP for local development. URLs containing userinfo, a query or a fragment are rejected. Redirects are never followed with the person's token.
 
 Hub does **not** substitute an owner credential or its registration token for personal app reads/writes. There is no caller-supplied URL or generic proxy route. App errors are summarized without returning backend diagnostics or unrelated fields; the one exception is the sentence an app sends with a 400 on capture, which is meant for the person.
 
-The routes are fixed: the two capability routes (`/api/v1/pocket/widget`, `/api/v1/pocket/capture`) through links, and the hand-written adapters: Tasks `/dashboard` and POST `/tasks`; Habits `/days/{date}`; Kitchen `/plan`; Notes GET/POST `/notes`; Day POST `/moments`. No further adapter is needed for a new app: it offers the capability.
+The routes are fixed: the two capability routes (`/api/v1/pocket/widget`, `/api/v1/pocket/capture`) through links, and the two hand-written adapters: Kitchen `/plan` and Day POST `/moments`. No further adapter is needed for a new app: it offers the capability.
 
-Without Pocket Core, with an older Core that does not know the rules, or while the rules are off, nothing changes: the five apps are read as before and no other app is asked.
+Without Pocket Core nothing is read. With an older Core that does not know the rules, or while the rules are off, only Kitchen and Day are reached; Tasks, Habits and Notes need the two rules switched on (Pocket Core → Links → Pocket Hub).
 
 ## Reliable capture
 
@@ -77,4 +79,4 @@ Receipts remain in SQLite across restarts and are deleted with their owning user
 
 ## Validation
 
-Go tests cover apps Hub has no code for (widget mapping, capture body, receipt, the app's own refusal, unknown kinds), that capability routes only ever see a link token and never the person's own, links that are off (not asked, reason given), a link switched off between two refreshes, an app outside the launcher list, the link taking over for first-party apps and the fallback to the adapter, the bound on apps asked per request, user-token forwarding, separate account summaries, fresh audience revocation, exact registered destinations, rejected redirects, partial and malformed source responses, capture validation and durable receipts, simultaneous duplicate submissions, changed-body conflicts and uncertain outcomes. Browser tests cover Today, capture inside an open app, draft retention, task/note/journal destinations, unavailable connections, retry identity, connected widgets, an unknown app's card, widget and capture kinds, a widget whose link is off, an app outside the launcher list, shelves from the app's category, mobile layout and existing workspace/widget behavior. Customer data is not used for synthetic write tests.
+Go tests cover apps Hub has no code for (widget mapping, capture body, receipt, the app's own refusal, unknown kinds), that capability routes only ever see a link token and never the person's own, links that are off (not asked, reason given), a link switched off between two refreshes, an app outside the launcher list, Tasks, Habits and Notes reached only through their links (never their old routes, with the link off or on an older version), Kitchen's adapter until Kitchen offers a widget, Day's journal moment with and without a date, the bound on apps asked per request, user-token forwarding, separate account summaries, fresh audience revocation, exact registered destinations, rejected redirects, partial and malformed source responses, capture validation and durable receipts, simultaneous duplicate submissions, changed-body conflicts and uncertain outcomes. Browser tests cover Today, capture inside an open app, draft retention, task/note/journal destinations, a date sent only when picked (a journal moment keeps today), unavailable connections, retry identity, connected widgets, an unknown app's card, widget and capture kinds, a widget whose link is off, an app outside the launcher list, shelves from the app's category, mobile layout and existing workspace/widget behavior. Customer data is not used for synthetic write tests.
