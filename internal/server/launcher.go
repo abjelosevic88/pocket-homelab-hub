@@ -54,6 +54,11 @@ type coreApp struct {
 			Scope string `json:"scope"`
 			Name  string `json:"name"`
 		} `json:"offers"`
+		// Category is the shelf the app named for itself.
+		Category string `json:"category"`
+		// What the app says it can do for a home screen: widget and capture
+		// (Core docs/capabilities.md). Search and day are for other apps.
+		core.Capabilities
 	} `json:"manifest"`
 }
 
@@ -84,6 +89,7 @@ type LauncherApp struct {
 	LastSeenAt  string   `json:"last_seen_at,omitempty"`
 	LastError   string   `json:"last_error,omitempty"`
 	Publishes   []string `json:"publishes,omitempty"`
+	Category    string   `json:"category,omitempty"` // the shelf the app named for itself in its manifest
 }
 
 // coreGet performs an authenticated GET against Core.
@@ -315,6 +321,7 @@ func (s *Server) handleLauncher(w http.ResponseWriter, r *http.Request) {
 		t := LauncherApp{Key: fmt.Sprintf("%s-%d", sv.Type, sv.ID), ID: sv.ID, Type: sv.Type, Name: sv.Name, Group: sv.Group, URL: sv.URL, OpenURL: sv.Open, Icon: sv.Icon, Pocket: sv.Pocket}
 		if a, ok := registry[sv.Type]; ok && sv.Pocket {
 			t.Slug, t.Status, t.Version, t.Description, t.LastSeenAt, t.LastError, t.Publishes = a.Slug, a.Status, a.Version, a.Description, a.LastSeenAt, a.LastError, a.Manifest.Publishes
+			t.Category = strings.TrimSpace(a.Manifest.Category)
 			if t.Icon == "" && a.Icon != "" {
 				t.Icon = strings.TrimRight(firstNonEmpty(a.PublicURL, sv.URL), "/") + "/" + strings.TrimLeft(a.Icon, "/")
 			}

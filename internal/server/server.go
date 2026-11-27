@@ -49,6 +49,7 @@ type Server struct {
 	refreshMu sync.Mutex
 	refreshes map[string]*sync.Mutex // per session: one refresh at a time
 	cache     sync.Map               // small response cache for Core reads
+	absent    sync.Map               // contract routes an app answered 404/405 on, and when
 }
 
 // New creates a server.

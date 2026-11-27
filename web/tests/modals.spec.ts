@@ -3,7 +3,7 @@ import { test, expect, origin } from './fixtures'
 for (const viewport of [{ width: 1440, height: 740 }, { width: 390, height: 844 }, { width: 667, height: 375 }]) {
   test(`capture stays anchored across types at ${viewport.width}×${viewport.height}`, async ({ page, harness }, testInfo) => {
     harness.apps.push({ ...harness.apps[0], id: 7, key: 'day-7', type: 'day', name: 'Pocket Day' })
-    harness.daily.destinations.push({ app_key: 'day-7', kind: 'day', name: 'Pocket Day' })
+    harness.daily.destinations.push({ app_key: 'day-7', kind: 'day', name: 'Pocket Day', capture_kind: 'moment', label: 'Journal moment', fields: ['date'] })
     await page.setViewportSize(viewport)
     await page.goto(origin + '/today')
     await page.getByRole('button', { name: 'Quick capture', exact: true }).click()

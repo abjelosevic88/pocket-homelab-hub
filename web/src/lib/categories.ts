@@ -1,8 +1,9 @@
 import type { Tile } from './types'
 
 // Apps sorted by what people use them for, so a box with dozens of apps reads
-// like a tidy shelf instead of one long grid. Keyed by Core catalog type; apps
-// the hub doesn't know fall back to their Core group.
+// like a tidy shelf instead of one long grid. An app's own category (from its
+// manifest) comes first; this table, keyed by Core catalog type, is for apps
+// that name none; apps the hub doesn't know fall back to their Core group.
 const CATEGORIES: [string, string[]][] = [
   ['Everyday', ['notes', 'tasks', 'calendar', 'day', 'habits', 'kitchen', 'contacts', 'clips', 'docmost']],
   ['Money', ['money', 'split', 'invoicing', 'firefly', 'pico']],
@@ -16,8 +17,19 @@ const CATEGORIES: [string, string[]][] = [
 const BY_TYPE = new Map(CATEGORIES.flatMap(([name, types]) => types.map(t => [t, name] as [string, string])))
 const ORDER = CATEGORIES.map(([name]) => name)
 
-export function categoryOf(t: Pick<Tile, 'type' | 'group' | 'pocket'>): string {
-  return BY_TYPE.get(t.type) || (t.group && t.group !== 'Pocket' ? t.group : 'More apps')
+// An app may name its own shelf in its manifest ("Money", "media"). The word is
+// taken when it is one of the shelves above, whole or one of its words (so
+// "Media" and "Photos" both mean "Photos & media"); any other word falls back
+// to the table, so shelves stay the familiar eight.
+const SHELF = new Map<string, string>()
+for (const name of ORDER) {
+  SHELF.set(name.toLowerCase(), name)
+  for (const word of name.toLowerCase().split(/[^a-z]+/)) if (word && word !== 'your') SHELF.set(word, name)
+}
+export const shelfFor = (category: string | undefined) => SHELF.get((category || '').trim().toLowerCase())
+
+export function categoryOf(t: Pick<Tile, 'type' | 'group' | 'pocket' | 'category'>): string {
+  return shelfFor(t.category) || BY_TYPE.get(t.type) || (t.group && t.group !== 'Pocket' ? t.group : 'More apps')
 }
 
 // Categories in a fixed, familiar order (unknown Core groups after them, "More

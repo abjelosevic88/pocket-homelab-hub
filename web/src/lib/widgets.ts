@@ -1,5 +1,7 @@
+import type { Daily, DailyOffer, DailySource } from './daily-context'
+
 export type WidgetSize = 'small' | 'medium' | 'large'
-export type WidgetKind = 'tasks-today' | 'habit-progress' | 'meal-plan' | 'recent-notes' | 'clock' | 'calendar' | 'focus' | 'favorites' | 'recent' | 'activity' | 'space' | 'shortcut' | 'note' | 'checklist' | 'countdown' | 'photo' | 'health' | 'box' | 'discover'
+export type WidgetKind = 'tasks-today' | 'habit-progress' | 'meal-plan' | 'recent-notes' | 'app' | 'clock' | 'calendar' | 'focus' | 'favorites' | 'recent' | 'activity' | 'space' | 'shortcut' | 'note' | 'checklist' | 'countdown' | 'photo' | 'health' | 'box' | 'discover'
 export type WidgetConfig = {
   title?: string; timezone?: string; clockStyle?: 'digital' | 'analog'; appKey?: string; spaceId?: string
   note?: string; items?: { id: string; text: string; done: boolean }[]; targetDate?: string; photoUrl?: string
@@ -12,6 +14,7 @@ export const WIDGETS: WidgetDefinition[] = [
   { kind: 'habit-progress', name: 'Habit progress', description: 'Your scheduled habits and today’s check-ins from Pocket Habits.', category: 'Your apps', symbol: '◉', tone: 'lavender', sizes: ['small', 'medium', 'large'], initial: 'medium' },
   { kind: 'meal-plan', name: 'Meal plan', description: 'What you have planned for today in Pocket Kitchen.', category: 'Your apps', symbol: '♧', tone: 'peach', sizes: ['small', 'medium', 'large'], initial: 'medium' },
   { kind: 'recent-notes', name: 'Recent notes', description: 'Pick up a thought from your latest Pocket Notes documents.', category: 'Your apps', symbol: '✎', tone: 'butter', sizes: ['small', 'medium', 'large'], initial: 'medium' },
+  { kind: 'app', name: 'App summary', description: 'A few lines from one of your apps: where things stand and what is next.', category: 'Your apps', symbol: '▤', tone: 'glass', sizes: ['small', 'medium', 'large'], initial: 'medium' },
   { kind: 'clock', name: 'Clock', description: 'Your time, or somewhere you love. Analog and digital faces with a choice of time zone.', category: 'Everyday', symbol: '◷', tone: 'cream', sizes: ['small', 'medium'], initial: 'small' },
   { kind: 'calendar', name: 'Calendar', description: 'A little perspective on the month. A date calendar, without appointments or account setup.', category: 'Everyday', symbol: '▦', tone: 'paper', sizes: ['small', 'medium', 'large'], initial: 'small' },
   { kind: 'focus', name: 'Focus', description: 'Start a quiet session, pause it, and come back when you’re ready. Uses your existing focus timer.', category: 'Everyday', symbol: '◈', tone: 'sage', sizes: ['small', 'medium', 'large'], initial: 'medium' },
@@ -29,7 +32,22 @@ export const WIDGETS: WidgetDefinition[] = [
   { kind: 'discover', name: 'Something to do', description: 'Find an app by what you want to do: cook, read, listen or capture an idea.', category: 'Your apps', symbol: '✦', tone: 'lavender', sizes: ['medium', 'large'], initial: 'medium' },
 ]
 export const widgetDefinition = (kind: WidgetKind) => WIDGETS.find(w => w.kind === kind)!
-export const widgetName = (w: HomeWidget) => w.config.title || widgetDefinition(w.kind).name
+// The four widgets Hub has always had, and the app (Core type) each one reads.
+export const CONNECTED: Record<string, string> = { 'tasks-today': 'tasks', 'habit-progress': 'habits', 'meal-plan': 'kitchen', 'recent-notes': 'notes' }
+// Every app with a summary to show: the ones asked this time and the ones waiting their turn.
+export const appWidgets = (daily: Daily | null | undefined): (DailySource | DailyOffer)[] => daily ? [...daily.sources, ...(daily.more || [])] : []
+// The app behind an "app" widget. A key is "<type>-<id>"; when the app was set up again under a new id, its type still finds it.
+export function appWidget(daily: Daily | null | undefined, appKey: string | undefined) {
+  if (!appKey) return undefined
+  const all = appWidgets(daily)
+  return all.find(a => a.app_key === appKey) || all.find(a => a.kind === appKey.replace(/-\d+$/, ''))
+}
+// A widget's name: the person's own title, else what the app calls its widget, else the kind's name.
+export function widgetName(w: HomeWidget, daily?: Daily | null) {
+  if (w.config.title) return w.config.title
+  const app = w.kind === 'app' ? appWidget(daily, w.config.appKey) : undefined
+  return app ? app.title || app.name.replace(/^Pocket /, '') : widgetDefinition(w.kind).name
+}
 export const DEFAULT_WIDGETS: HomeWidget[] = [
   { id: 'home-clock', kind: 'clock', size: 'small', config: { clockStyle: 'analog' } },
   { id: 'home-calendar', kind: 'calendar', size: 'small', config: {} },

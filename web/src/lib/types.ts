@@ -32,6 +32,7 @@ export type Tile = {
   last_seen_at?: string
   last_error?: string
   publishes?: string[]
+  category?: string // the shelf the app named for itself
 }
 
 export type Box = {

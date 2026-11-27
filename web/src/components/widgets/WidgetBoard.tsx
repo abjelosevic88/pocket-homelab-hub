@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { useApp } from '../../lib/app-context'
-import { DEFAULT_WIDGETS, homeWidgets, moveWidget, widgetDefinition, widgetName, type HomeWidget, type WidgetConfig } from '../../lib/widgets'
+import { useDaily } from '../../lib/daily-context'
+import { DEFAULT_WIDGETS, homeWidgets, moveWidget, widgetDefinition, widgetName as kindName, type HomeWidget, type WidgetConfig } from '../../lib/widgets'
 import type { Activity } from '../../lib/types'
 import { Modal, OverlayPresence } from '../ui'
 import { WidgetContent } from './WidgetContent'
@@ -10,6 +11,9 @@ import { WidgetGallery } from './WidgetGallery'
 export function WidgetBoard({ activity, activityError }: { activity: Activity | null; activityError: boolean }) {
   const { prefs, setPrefs, editing, setEditing, prefsSaving, prefsError } = useApp()
   const widgets = homeWidgets(prefs.home_widgets)
+  // An app's widget goes by the title the app gave it, so its name needs today's data.
+  const { data: daily } = useDaily()
+  const widgetName = (w: HomeWidget) => kindName(w, daily)
   const [gallery, setGallery] = useState(false)
   const [options, setOptions] = useState(false)
   const [editor, setEditor] = useState<string | null>(null)

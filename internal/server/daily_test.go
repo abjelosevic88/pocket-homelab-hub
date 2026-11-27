@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -20,11 +21,38 @@ type dailyFixture struct {
 	ann, bob string
 	revoked  atomic.Bool
 	mismatch atomic.Bool
+
+	mu        sync.Mutex
+	manifests map[string]map[string]any // what a first-party app declares, by slug
+	extra     []extraApp                // apps Hub has no adapter for (Ann's only)
+}
+
+type extraApp struct {
+	slug, url string
+	manifest  map[string]any
+}
+
+// declare sets the manifest Core has for one of the first-party apps.
+func (f *dailyFixture) declare(slug string, manifest map[string]any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.manifests[slug] = manifest
+}
+
+// add registers an app Hub has never heard of, on its own address, and puts it on Ann's list.
+func (f *dailyFixture) add(t *testing.T, slug string, manifest map[string]any, handler http.HandlerFunc) *httptest.Server {
+	t.Helper()
+	app := httptest.NewServer(handler)
+	t.Cleanup(app.Close)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.extra = append(f.extra, extraApp{slug: slug, url: app.URL, manifest: manifest})
+	return app
 }
 
 func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 	t.Helper()
-	f := &dailyFixture{}
+	f := &dailyFixture{manifests: map[string]map[string]any{}}
 	app := httptest.NewServer(handler)
 	t.Cleanup(app.Close)
 	core := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +70,18 @@ func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 					}
 					services = append(services, map[string]any{"id": i + 1, "type": kind, "name": "Pocket " + kind, "url": target, "pocket": true})
 				}
+				f.mu.Lock()
+				for i, x := range f.extra {
+					if r.Header.Get("Authorization") != "Bearer pcu_ann" {
+						continue
+					}
+					target := x.url
+					if f.mismatch.Load() {
+						target = "https://unregistered.example"
+					}
+					services = append(services, map[string]any{"id": len(personalKinds) + i + 1, "type": x.slug, "name": "Pocket " + x.slug, "url": target, "icon": x.url + "/favicon.svg", "pocket": true})
+				}
+				f.mu.Unlock()
 			}
 			writeJSON(w, 200, services)
 		case "/api/v1/apps":
@@ -49,9 +89,14 @@ func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 				t.Error("registry not read as hub")
 			}
 			apps := []map[string]any{}
+			f.mu.Lock()
 			for i, kind := range personalKinds {
-				apps = append(apps, map[string]any{"id": i + 1, "slug": kind, "public_url": app.URL})
+				apps = append(apps, map[string]any{"id": i + 1, "slug": kind, "public_url": app.URL, "manifest": f.manifests[kind]})
 			}
+			for i, x := range f.extra {
+				apps = append(apps, map[string]any{"id": len(personalKinds) + i + 1, "slug": x.slug, "public_url": x.url, "manifest": x.manifest})
+			}
+			f.mu.Unlock()
 			writeJSON(w, 200, apps)
 		case "/api/v1/auth/subject":
 			writeJSON(w, 200, map[string]any{"active": true, "iss": "core"})

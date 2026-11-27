@@ -22,6 +22,7 @@ export function WidgetContent({ widget: w, data, configure, update }: Props) {
   const title = <div className="w-title">{name}</div>
   switch (w.kind) {
     case 'tasks-today': case 'habit-progress': case 'meal-plan': case 'recent-notes': return <ConnectedWidget widget={w} />
+    case 'app': return <ConnectedWidget widget={w} configure={configure} />
     case 'clock': {
       let timezone = w.config.timezone || undefined
       try { new Intl.DateTimeFormat(undefined, { timeZone: timezone }).format(now) } catch { timezone = undefined }

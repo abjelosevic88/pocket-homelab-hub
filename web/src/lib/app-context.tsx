@@ -22,7 +22,8 @@ type Ctx = {
   dockTiles: Tile[]
   openApps: string[]
   setOpenApps: (keys: string[]) => void
-  open: (t: Tile) => void
+  open: (t: Tile, at?: string) => void // at: an address inside the app to land on (a task, a note)
+  openAt: Record<string, string>
   sheet: Tile | null
   setSheet: (t: Tile | null) => void
   palette: boolean
@@ -31,12 +32,37 @@ type Ctx = {
   setEditing: (v: boolean) => void
 }
 
+// insideApp: the address is on the app's own site (same origin, under its base path).
+function insideApp(t: Tile, at: string) {
+  try {
+    const base = new URL(t.url), target = new URL(at)
+    return target.origin === base.origin && (target.pathname + '/').startsWith(base.pathname.replace(/\/$/, '') + '/')
+  } catch { return false }
+}
+
+// frameAddress is what an app's tab loads. With "at" (an item inside the app)
+// it goes through the app's sign-in start when the tile has one, so the item
+// opens with the person signed in: …/auth/oidc/start?next=/task/7.
+export function frameAddress(t: Tile, at?: string) {
+  const start = t.open_url || t.url
+  if (!at) return start
+  try {
+    const entry = new URL(start), item = new URL(at)
+    if (entry.origin === item.origin && entry.pathname.endsWith('/auth/oidc/start')) {
+      entry.searchParams.set('next', item.pathname + item.search + item.hash)
+      return entry.toString()
+    }
+  } catch { /* not an address: open the item as given */ }
+  return at
+}
+
 const AppCtx = createContext<Ctx>(null as unknown as Ctx)
 export function useApp() { return useContext(AppCtx) }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const [openApps, setOpenApps] = useState<string[]>([])
+  const [openAt, setOpenAt] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<AuthStatus | null>(null)
   const [launcher, setLauncher] = useState<Launcher | null>(null)
   const [launcherError, setLauncherError] = useState(false)
@@ -109,6 +135,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await refresh()
   }, [refresh, flushPrefs])
 
+  // A closed tab forgets the item it was opened at; the app starts at its front door next time.
+  useEffect(() => { setOpenAt(m => Object.keys(m).every(k => openApps.includes(k)) ? m : Object.fromEntries(Object.entries(m).filter(([k]) => openApps.includes(k)))) }, [openApps])
+
   useEffect(() => { refresh() }, [refresh])
   useEffect(() => {
     const onUnauth = () => refresh()
@@ -165,8 +194,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return tiles.filter(t => t.pocket && t.type !== 'core' && t.type !== 'firefly').slice(0, 6)
   }, [allTiles, tiles, prefs.dock])
 
-  const open = useCallback((t: Tile) => {
+  const open = useCallback((t: Tile, at?: string) => {
     window.dispatchEvent(new CustomEvent('hub:launch', { detail: t.key }))
+    // Only an address of the app itself may replace what its tab shows.
+    if (at && insideApp(t, at)) setOpenAt(m => ({ ...m, [t.key]: at }))
     setOpenApps(keys => keys.includes(t.key) ? keys : [...keys, t.key])
     setSheet(null); setPalette(false)
     navigate(`/app/${encodeURIComponent(t.key)}`)
@@ -182,6 +213,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const value: Ctx = { status, user: status?.user || null, refresh, logout, launcher, reload, loading, launcherError, prefs, prefsError, prefsSaving, retryPrefs: flushPrefs, setPrefs, tiles, allTiles, dockTiles, openApps, setOpenApps, open, sheet, setSheet, palette, setPalette, editing, setEditing }
+  const value: Ctx = { status, user: status?.user || null, refresh, logout, launcher, reload, loading, launcherError, prefs, prefsError, prefsSaving, retryPrefs: flushPrefs, setPrefs, tiles, allTiles, dockTiles, openApps, setOpenApps, open, openAt, sheet, setSheet, palette, setPalette, editing, setEditing }
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
 }

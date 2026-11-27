@@ -16,10 +16,10 @@
 
 A Pocket Box runs a dozen Pocket apps and a few dozen third-party services, and Pocket Core knows which of them each person in the household may use. The hub is the window on that: it has no app list of its own. A person signs in with Pocket Core, the hub reads *their* launcher from Core with *their* token, and draws it.
 
-- **A home that’s yours.** A searchable gallery of 19 widget types: clock, calendar, focus, favorites, recently opened apps, activity, spaces, app shortcuts, quick notes, checklists, countdowns, photo frames, app health, Box information, things to do, and four live widgets for Tasks, Habits, Kitchen and Notes. Add up to 24 widgets, choose supported small/medium/large sizes, and arrange them with touch, mouse or keyboard. Notes, checklists and layout save to your account. Remove with undo; restore starter widgets; hide the spaces or app grid. [Widget behavior and extension guide](docs/widgets.md).
+- **A home that’s yours.** A searchable gallery of widgets: clock, calendar, focus, favorites, recently opened apps, activity, spaces, app shortcuts, quick notes, checklists, countdowns, photo frames, app health, Box information, things to do, live widgets for Tasks, Habits, Kitchen and Notes, and one for every other app that says it has a summary to show (the app names it and fills it; nothing is added in Hub). Add up to 24 widgets, choose supported small/medium/large sizes, and arrange them with touch, mouse or keyboard. Notes, checklists and layout save to your account. Remove with undo; restore starter widgets; hide the spaces or app grid. [Widget behavior and extension guide](docs/widgets.md).
 - **Personal touches.** The distinctive open-lid Pocket Box icon, a labeled favorites sidebar, adjustable home atmosphere, app order and hidden apps. Long-press or right-click an app tile for details; *Edit layout* to arrange apps.
-- **Your day together.** Today brings tasks due, habit check-ins, planned meals and recently edited notes into one personal view, with independent source refresh and honest unavailable states.
-- **Catch a thought anywhere.** Capture a task, note or journal moment from the top bar without leaving an open app. Choose the destination, save to your own account, and keep unfinished drafts while moving around Hub. Retried saves have duplicate protection. [Today and capture guide](docs/daily-and-capture.md).
+- **Your day together.** Today brings tasks due, habit check-ins, planned meals and recently edited notes into one personal view, with independent source refresh and honest unavailable states. Any other Pocket app joins on its own once it says it has a summary: its card carries the title, the line, the numbers and the rows the app sends, and a row opens that very item.
+- **Catch a thought anywhere.** Capture a task, note or journal moment from the top bar without leaving an open app, or anything else one of your apps says it can keep (listed under *More*, by app, with only the fields that kind takes). Choose the destination, save to your own account, open the new item straight away, and keep unfinished drafts while moving around Hub. Retried saves have duplicate protection. [Today and capture guide](docs/daily-and-capture.md).
 - **A unified workspace.** Apps open inside Hub with persistent navigation and an app switcher. Going Home or switching apps preserves open app state; closing a tab or reloading the browser ends that workspace. Tiles for Pocket apps open the app's *Sign in with Pocket Core* entry, so the click lands you in the app as yourself, even on a browser that was someone else a minute ago. Third-party apps need compatible embedding and sign-in settings; see the [customer experience and integration guide](docs/customer-experience.md).
 - **Intent search.** ⌘K, type an app or “plan dinner,” enter. Matching runs locally against your available apps.
 - **Personal spaces.** Focus, downtime, everyday life, or a custom set of apps saved to your account.
@@ -82,13 +82,26 @@ Without `CORE_URL` the hub starts, signs you in with a password if `PASSWORD_LOG
 | What | Read as | Endpoint |
 |---|---|---|
 | the person's tiles | the person (their OIDC tokens from sign-in, refreshed; or the `pcd_`/`pcu_` token a phone presented) | `GET /api/v1/me/services` |
-| health, version, description of Pocket apps already on the list | the hub (`pca_`) | `GET /api/v1/apps` |
+| health, version, description of Pocket apps already on the list; what each app says about itself in its manifest: its `category` (the shelf it sits on), its `widget` and what it keeps from quick `capture` | the hub (`pca_`) | `GET /api/v1/apps` |
 | box name, Core version, uptime | the hub | `GET /api/v1/system` |
 | activity | the person first (`GET /api/v1/events`, which Core answers only for admins), else the hub through its `events:read` links, filtered to the person | `GET /api/v1/events` |
 
 Rules the feed applies before showing anything: an event that names a person (`user_email`) is shown only to that person; a household event (none named) is shown when its app is on the person's list; `core.*` events other than `core.app.*` are for admins.
 
-The hub's own API is small: `/api/v1/launcher`, `/activity`, `/prefs`, `/system`, and the usual `/auth/*`. It accepts the hub session cookie or a Core token (`Authorization: Bearer pcd_…`), so the Pocket Homelab app can read the same launcher. See [docs/configuration.md](docs/configuration.md).
+### Widgets and quick capture come from the apps
+
+Hub has no list of apps it can show a widget for or send a quick line to. A Pocket app says so itself, in the manifest it registers with Core ([capabilities](https://github.com/abjelosevic88/pocket-homelab-core/blob/main/docs/capabilities.md)): `widget: {title, what}` and `capture: {kinds: [{kind, label, what, fields}]}`. Hub reads that from Core's registry and then asks the app as the person, with the person's own Core token:
+
+| What | Asked of the app | Becomes |
+|---|---|---|
+| the app's widget | `GET /api/v1/pocket/widget` | a source in `GET /api/v1/daily` (a card on Today, a widget in the gallery) |
+| a quick line | `POST /api/v1/pocket/capture` | a destination in `GET /api/v1/daily`, saved through `POST /api/v1/capture` |
+
+So a new app needs nothing in Hub: once it declares the capability and is on a person's list, its widget and its capture kinds are there. The person's token only ever goes to a Pocket app that is on their own list and registered with Core at exactly that address. Hub asks no links for this and declares no "every app" rule; the routes sit behind each app's normal sign-in. An app may also name its shelf (`category`); Hub uses it when it is one of its own shelves.
+
+The hand-written adapters for Tasks, Habits, Kitchen, Notes and Day stay for versions of those apps that do not declare the capability yet. Once one of them does, Hub reads it through the contract only, and falls back to the old adapter when the route answers 404 or 405. Details: [Today and capture](docs/daily-and-capture.md).
+
+The hub's own API is small: `/api/v1/launcher`, `/activity`, `/daily`, `/capture`, `/prefs`, `/system`, and the usual `/auth/*`. It accepts the hub session cookie or a Core token (`Authorization: Bearer pcd_…`), so the Pocket Homelab app can read the same launcher. See [docs/configuration.md](docs/configuration.md).
 
 ## Develop
 

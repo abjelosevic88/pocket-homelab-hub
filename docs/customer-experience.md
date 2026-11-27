@@ -6,7 +6,7 @@ Today brings together personal tasks, habits, meal plans and recent notes. Quick
 
 The home screen adds:
 
-- A personal widget board with 19 widget types, three supported sizes, a searchable gallery with live previews, and touch, mouse and keyboard arrangement. Layout and widget contents save per account; removing or restoring widgets offers undo. See [widgets](widgets.md) for data sources and extension rules.
+- A personal widget board with 19 built-in widget types and one more for every app that has a summary to show, three supported sizes, a searchable gallery with live previews, and touch, mouse and keyboard arrangement. Layout and widget contents save per account; removing or restoring widgets offers undo. See [widgets](widgets.md) for data sources and extension rules.
 - Suggested spaces for focus, downtime and everyday life, plus custom spaces saved in the person's Hub preferences.
 - Local intent matching: “plan dinner,” “capture an idea,” “listen to music.” It searches available apps; it does not execute tasks or claim to be an AI assistant.
 - A recently opened widget backed by a per-user browser-storage key; the history can be cleared in the widget.

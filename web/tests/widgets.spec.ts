@@ -7,7 +7,8 @@ test('gallery offers all widget types with live size previews and saves a person
   await page.goto(origin)
   await expect(page.locator('.widget-grid .home-widget')).toHaveCount(7)
   await page.getByRole('button', { name: 'Add widgets' }).click()
-  await expect(page.locator('.widget-choices>button')).toHaveCount(WIDGETS.length)
+  // Every built-in kind; the "app" kind is listed once per app that has a summary (none here).
+  await expect(page.locator('.widget-choices>button')).toHaveCount(WIDGETS.length - 1)
   await page.getByRole('searchbox', { name: 'Search widgets' }).fill('note')
   await page.locator('.widget-choices>button').filter({ hasText: 'Quick note' }).click()
   await page.getByRole('button', { name: 'large', exact: true }).click()

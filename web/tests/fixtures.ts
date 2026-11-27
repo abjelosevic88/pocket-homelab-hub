@@ -17,7 +17,7 @@ export const test = base.extend<{ harness: { prefs: Record<string, any>; saveFai
     await browser.close()
   }, { scope: 'worker' }],
   harness: async ({ context }, use) => {
-    const state = { prefs: {} as Record<string, any>, saveFails: false, userId: 7, apps: [...tiles], activity: { events: [] as any[], scope: 'mine' }, daily: { date: '2026-10-21', refreshed_at: new Date().toISOString(), sources: [], destinations: [{ app_key: 'tasks-1', kind: 'tasks', name: 'Pocket Tasks' }, { app_key: 'notes-0', kind: 'notes', name: 'Pocket Notes' }] } as any, dailyFails: false, captures: [] as any[] }
+    const state = { prefs: {} as Record<string, any>, saveFails: false, userId: 7, apps: [...tiles], activity: { events: [] as any[], scope: 'mine' }, daily: { date: '2026-10-21', refreshed_at: new Date().toISOString(), sources: [], more: [], destinations: [{ app_key: 'tasks-1', kind: 'tasks', name: 'Pocket Tasks', capture_kind: 'task', label: 'Task', fields: ['title', 'due'] }, { app_key: 'notes-0', kind: 'notes', name: 'Pocket Notes', capture_kind: 'note', label: 'Note', fields: ['title'] }] } as any, dailyFails: false, captures: [] as any[] }
     await context.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url())
       if (url.origin !== origin) return route.fulfill({ contentType: 'text/html', body: `<html><body><h1>${url.hostname}</h1><label>Draft <input aria-label="Draft"></label><script>window.bootId = Math.random()</script></body></html>` })

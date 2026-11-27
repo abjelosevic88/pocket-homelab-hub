@@ -55,7 +55,7 @@ test('note drafts survive closing capture and navigation; the shortcut opens onl
 
 test('journal capture uses the selected day and an available Day destination', async ({ page, harness }) => {
   harness.apps.push({ ...harness.apps[0], id: 7, key: 'day-7', type: 'day', name: 'Pocket Day', url: 'https://day.pocket.test/', open_url: 'https://day.pocket.test/' })
-  harness.daily.destinations.push({ app_key: 'day-7', kind: 'day', name: 'Pocket Day' })
+  harness.daily.destinations.push({ app_key: 'day-7', kind: 'day', name: 'Pocket Day', capture_kind: 'moment', label: 'Journal moment', fields: ['date'] })
   await page.goto(origin + '/today')
   await page.getByRole('button', { name: /Save a memory/ }).click()
   await page.getByLabel('Your moment').fill('A beautiful walk after dinner.')

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useApp } from '../../lib/app-context'
+import { frameAddress, useApp } from '../../lib/app-context'
 import type { Tile } from '../../lib/types'
 import { AppIcon } from '../AppIcon'
 import { Help, Home, Plus, Refresh, Search, X, External } from '../icons'
 import { capture } from '../../lib/daily-context'
 
 export function AppWorkspace() {
-  const { allTiles, launcher, openApps, setOpenApps, open, setPalette } = useApp()
+  const { allTiles, launcher, openApps, setOpenApps, open, openAt, setPalette } = useApp()
   const loc = useLocation()
   const navigate = useNavigate()
   let key = ''
@@ -41,18 +41,19 @@ export function AppWorkspace() {
       </div>
     </div>
     {help && <div className="workspace-help"><span>Your app stays open while you go Home or switch apps. If it asks you to sign in and nothing happens, open it in a new tab, sign in there, then press reload here.</span>{active && <a className="btn small" href={active.open_url || active.url} target="_blank" rel="noopener noreferrer">Open in new tab <External /></a>}</div>}
-    {apps.map(t => <AppFrame key={`${t.key}-${revisions[t.key] || 0}`} tile={t} active={key === t.key} onHelp={() => setHelp(true)} />)}
+    {apps.map(t => <AppFrame key={`${t.key}-${revisions[t.key] || 0}-${openAt[t.key] || ''}`} tile={t} at={openAt[t.key]} active={key === t.key} onHelp={() => setHelp(true)} />)}
     {key && !active && <div className="workspace-empty"><h2>{launcher ? 'This app isn’t available on your account.' : 'Getting your apps ready…'}</h2><p>See which apps you can use.</p><button className="btn" onClick={() => navigate('/apps')}>Browse apps</button></div>}
   </section>
 }
 
-function AppFrame({ tile, active, onHelp }: { tile: Tile; active: boolean; onHelp: () => void }) {
+function AppFrame({ tile, at, active, onHelp }: { tile: Tile; at?: string; active: boolean; onHelp: () => void }) {
   const [state, setState] = useState<'loading' | 'responded' | 'slow'>('loading')
   useEffect(() => {
     const id = window.setTimeout(() => setState(s => s === 'loading' ? 'slow' : s), 12000)
     return () => window.clearTimeout(id)
   }, [])
-  const src = tile.open_url || tile.url
+  // at: the item a widget row or a fresh capture pointed to; otherwise the app's own start.
+  const src = frameAddress(tile, at)
   const supported = /^https?:\/\//i.test(src) && !(window.location.protocol === 'https:' && src.startsWith('http:'))
   return <div className="frame-container" hidden={!active}>
     {supported ? <iframe title={tile.name} src={src} className="app-frame" onLoad={() => setState('responded')} onError={() => setState('slow')} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals allow-presentation allow-pointer-lock" allow="fullscreen; picture-in-picture; clipboard-write; microphone" referrerPolicy="strict-origin-when-cross-origin" /> : <div className="workspace-empty"><h2>This app can’t open here yet.</h2><p>It needs a secure (https) address. The person who looks after your box can set one up.</p></div>}

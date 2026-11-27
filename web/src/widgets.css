@@ -31,6 +31,14 @@
 .w-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:24px; flex-shrink:0 }
 .w-heading button,.w-heading>a { background:none; border:0; cursor:pointer; font-size:17px; padding:2px 5px; border-radius:7px; flex-shrink:0 }
 .w-heading .w-title { min-width:0 }
+/* Widgets fed by an app: its line, its numbers and a few rows. */
+.w-live-line { font-size:14px; font-weight:600; line-height:1.35; margin:8px 0 0; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; flex-shrink:0 }
+.w-live-metrics { display:flex; gap:22px; margin:10px 0 6px; min-width:0; flex-shrink:0 }.w-live-metrics>div { display:flex; flex-direction:column; gap:3px; min-width:0 }.w-live-metrics strong { font-size:28px; line-height:1.1; font-weight:450; letter-spacing:-1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }.w-live-metrics span { font-size:10px; opacity:.7; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.w-live-items { display:flex; flex-direction:column; gap:7px; min-height:0; overflow:hidden; margin-top:7px }.w-live-items button { display:flex; align-items:center; gap:7px; background:none; border:0; padding:0; color:inherit; text-align:left; font-size:12px; cursor:pointer; min-width:0; flex-shrink:0 }.w-live-items button>span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.w-live-empty { font-size:12px; line-height:1.5; opacity:.7; margin:8px 0 }
+.widget-large .w-live-metrics { margin:18px 0 12px }.widget-large .w-live-metrics strong { font-size:40px }.widget-large .w-live-items { gap:14px }
+.widget-small .w-live-line { font-size:13px }.widget-small .w-live-metrics { margin:6px 0 2px }.widget-small .w-live-metrics strong { font-size:24px }
+.widget-choices>button>.ico { flex-shrink:0 }
 .w-footnote { font-size:10px; opacity:.72; margin-top:auto; padding-top:8px; text-align:left; line-height:1.4; background:none; border:0; flex-shrink:0 }
 button.w-footnote { cursor:pointer }
 .w-empty { display:flex; flex:1; flex-direction:column; align-items:flex-start; justify-content:center; gap:5px; min-height:0 }
