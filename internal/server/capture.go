@@ -65,10 +65,11 @@ func hardCaptureFor(app, kind string) *hardCapture {
 	return nil
 }
 
-// captureKinds are the kinds the app declared, tidied: a usable word, a label,
-// only the fields Hub has an input for.
+// captureKinds are the kinds the app keeps through its Core link, tidied: a
+// usable word, a label, only the fields Hub has an input for. None when the
+// app offers no capture or the link is off for the person.
 func captureKinds(app personalApp) []core.CaptureKind {
-	if app.capture == nil {
+	if app.capture == nil || !app.captureLink.on {
 		return nil
 	}
 	var out []core.CaptureKind
@@ -98,14 +99,15 @@ func captureKinds(app personalApp) []core.CaptureKind {
 	return out
 }
 
-// destinationsOf lists where a quick line can go: every kind an app declares,
-// or the hand-written one for an app that declares none.
+// destinationsOf lists where a quick line can go: every kind an app keeps
+// through its Core link, or the hand-written one for a first-party app without
+// such a link. An app whose link is off is simply not offered.
 func destinationsOf(apps []personalApp) []captureDestination {
 	out := []captureDestination{}
 	for _, app := range apps {
 		kinds := captureKinds(app)
 		if len(kinds) == 0 {
-			if h := hardCaptureFor(app.Kind, ""); h != nil {
+			if h := hardCaptureFor(app.Kind, ""); h != nil && app.URL != "" {
 				out = append(out, captureDestination{personalApp: app, CaptureKind: h.kind, Label: h.label, Fields: h.fields})
 			}
 			continue
@@ -174,7 +176,8 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "Choose what you want to add.")
 		return
 	}
-	apps, token, err := s.personalApps(r.Context(), principalFrom(r.Context()))
+	p := principalFrom(r.Context())
+	apps, token, err := s.personalApps(r.Context(), p)
 	if err != nil {
 		writeErr(w, 503, "Your apps could not be connected. Nothing was sent.")
 		return
@@ -190,9 +193,10 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 403, "This destination is no longer available in your profile.")
 		return
 	}
-	// A kind the app declared goes to the capture route of the contract. A
-	// task, a note and a journal moment also keep their hand-written route,
-	// for a version of Tasks, Notes or Day without the capability.
+	// A kind the app keeps through its Core link goes there with a link token.
+	// A task, a note and a journal moment also keep their hand-written route
+	// (the person's own token, Tasks, Notes and Day only), for when the app
+	// offers no capture or its link is off.
 	var declared *core.CaptureKind
 	kinds := captureKinds(*target)
 	for i := range kinds {
@@ -201,8 +205,13 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	hard := hardCaptureFor(target.Kind, in.Kind)
+	if target.URL == "" {
+		hard = nil // not at the address Core has for it: the person's token stays here
+	}
 	if declared == nil && hard == nil {
 		switch {
+		case target.capture != nil && !target.captureLink.on:
+			writeErr(w, 403, linkOffSentence(target.captureLink.state))
 		case len(kinds) > 0:
 			writeErr(w, 400, target.Name+" does not keep that. Choose one of the things it offers.")
 		case hardCaptureFor("", in.Kind) != nil:
@@ -212,7 +221,7 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	contract := declared != nil && !(hard != nil && s.contractMissing(*target, "capture"))
+	contract := declared != nil
 	var hardPath string
 	var hardBody map[string]any
 	if hard != nil {
@@ -277,13 +286,17 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 	var status int
 	var receipt map[string]any
 	if contract {
-		code, raw, requestErr := personalDo(ctx, *target, token, http.MethodPost, core.CapturePath, send)
-		if requestErr != nil && contractAbsent(code) && hard != nil {
-			// An older version of the app: the route is not there, so nothing was kept.
-			s.rememberContractMissing(*target, "capture")
+		saved, requestErr := s.core.CaptureIn(ctx, p.user.Email, target.Kind, send)
+		var off *core.LinkError
+		if errors.As(requestErr, &off) {
+			s.forgetCapable(p.user.Email)
+		}
+		if requestErr != nil && hard != nil && useHardWired(requestErr) {
+			// Core has just refused the link, or the app that runs does not
+			// serve the route yet: nothing was kept, so its own route is used.
 			contract = false
 		} else {
-			status, receipt = contractReceipt(*target, in.Kind, code, raw, requestErr)
+			status, receipt = contractReceipt(*target, in.Kind, saved, requestErr)
 		}
 	}
 	if !contract {
@@ -321,25 +334,24 @@ func unconfirmedReceipt(target personalApp, code int) (int, map[string]any) {
 	return http.StatusBadGateway, receipt
 }
 
-// contractReceipt reads the app's answer on the capture route. "id" stays a
-// number for older clients (0 when the app's id is not one); item_id is the
-// app's own id as text and url opens the new item.
-func contractReceipt(target personalApp, kind string, code int, raw []byte, requestErr error) (int, map[string]any) {
-	if requestErr != nil {
+// contractReceipt reads the app's answer to a capture sent through a Core
+// link. "id" stays a number for older clients (0 when the app's id is not
+// one); item_id is the app's own id as text and url opens the new item.
+func contractReceipt(target personalApp, kind string, saved *core.CaptureResult, requestErr error) (int, map[string]any) {
+	var off *core.LinkError
+	var refused *core.CapabilityError
+	switch {
+	case errors.As(requestErr, &off):
+		// Core gave no token, so nothing reached the app.
+		return http.StatusBadGateway, map[string]any{"status": "failed", "app_key": target.Key, "error": linkOffSentence(off.Reason)}
+	case errors.As(requestErr, &refused):
 		// 400 is the app telling the person what to fix, in its own words.
-		var refusal struct {
-			Error string `json:"error"`
+		if sentence := oneLine(refused.Message, 300); refused.Status == http.StatusBadRequest && sentence != "" && sentence != http.StatusText(http.StatusBadRequest) {
+			return http.StatusBadRequest, map[string]any{"status": "failed", "app_key": target.Key, "error": sentence}
 		}
-		if code == http.StatusBadRequest && json.Unmarshal(raw, &refusal) == nil {
-			if sentence := oneLine(refusal.Error, 300); sentence != "" {
-				return http.StatusBadRequest, map[string]any{"status": "failed", "app_key": target.Key, "error": sentence}
-			}
-		}
-		return unconfirmedReceipt(target, code)
-	}
-	var saved core.CaptureResult
-	if json.Unmarshal(raw, &saved) != nil || strings.TrimSpace(saved.ID) == "" {
-		return unconfirmedReceipt(target, code)
+		return unconfirmedReceipt(target, refused.Status)
+	case requestErr != nil || saved == nil || strings.TrimSpace(saved.ID) == "":
+		return unconfirmedReceipt(target, 0)
 	}
 	id, err := strconv.ParseInt(saved.ID, 10, 64)
 	if err != nil || id < 0 {
@@ -349,7 +361,7 @@ func contractReceipt(target personalApp, kind string, code int, raw []byte, requ
 	if title := oneLine(saved.Title, 200); title != "" {
 		receipt["title"] = title
 	}
-	if link := appLink(target, saved.URL); link != "" {
+	if link := appLink(target.public, saved.URL); link != "" {
 		receipt["url"] = link
 	}
 	return http.StatusCreated, receipt

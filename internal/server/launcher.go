@@ -56,9 +56,6 @@ type coreApp struct {
 		} `json:"offers"`
 		// Category is the shelf the app named for itself.
 		Category string `json:"category"`
-		// What the app says it can do for a home screen: widget and capture
-		// (Core docs/capabilities.md). Search and day are for other apps.
-		core.Capabilities
 	} `json:"manifest"`
 }
 

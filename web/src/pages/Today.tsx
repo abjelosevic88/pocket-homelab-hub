@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../lib/app-context'
-import { figuresOf, useDaily, capture, type DailySource } from '../lib/daily-context'
+import { figuresOf, useDaily, useDailyApps, capture, type DailySource } from '../lib/daily-context'
 import { AppIcon } from '../components/AppIcon'
 import { Journal, Note, Refresh, Task } from '../components/icons'
 
@@ -16,16 +16,16 @@ function readableDetail(value: string) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + (value.includes('T') ? ` · ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` : '')
 }
 export function DailyCard({ source, compact = false }: { source: DailySource; compact?: boolean }) {
-  const { allTiles, open } = useApp()
-  const tile = allTiles.find(t => t.key === source.app_key)
+  const { tileOf, openApp } = useDailyApps()
+  const tile = tileOf(source)
   if (!tile) return null
   const figures = figuresOf(source)
   return <article className={`daily-card daily-${source.kind} ${compact ? 'daily-compact' : ''}`} aria-label={`${source.name} summary`}>
-    <div className="daily-card-heading"><div><AppIcon t={tile} size={30} /><span>{dailyTitle(source)}</span></div><button className="text-button" onClick={() => open(tile, source.url)}>Open</button></div>
+    <div className="daily-card-heading"><div><AppIcon t={tile} size={30} /><span>{dailyTitle(source)}</span></div><button className="text-button" onClick={() => openApp(source, source.url)}>Open</button></div>
     {source.state !== 'ready' ? <p className="daily-source-error">{source.message || 'This app couldn’t be refreshed just now.'}</p> : <>
       {source.line && <p className="daily-line">{source.line}</p>}
       {figures.length > 0 && <div className="daily-metrics">{figures.map(m => <div key={m.label}><strong>{m.value}</strong><span>{m.label}</span></div>)}</div>}
-      <div className="daily-items">{(compact ? source.items.slice(0, 3) : source.items).map((item, i) => <button key={`${item.id}-${i}`} onClick={() => open(tile, item.url)}><span className={`daily-item-mark ${item.done ? 'done' : ''}`}>{item.done ? '✓' : ''}</span><span><strong>{item.title}</strong>{item.detail && <small>{readableDetail(item.detail)}</small>}</span><span>›</span></button>)}</div>
+      <div className="daily-items">{(compact ? source.items.slice(0, 3) : source.items).map((item, i) => <button key={`${item.id}-${i}`} onClick={() => openApp(source, item.url)}><span className={`daily-item-mark ${item.done ? 'done' : ''}`}>{item.done ? '✓' : ''}</span><span><strong>{item.title}</strong>{item.detail && <small>{readableDetail(item.detail)}</small>}</span><span>›</span></button>)}</div>
       {!source.items.length && !source.line && <p className="daily-empty">{dailyEmpty[source.kind] || 'Nothing to show right now.'}</p>}
       {!compact && source.message && <p className="daily-footnote">{source.message}</p>}
     </>}
@@ -33,9 +33,10 @@ export function DailyCard({ source, compact = false }: { source: DailySource; co
 }
 export default function TodayPage() {
   const { data, loading, error, refresh } = useDaily()
-  const { allTiles } = useApp()
-  const sources = (data?.sources || []).filter(s => allTiles.some(t => t.key === s.app_key))
-  const waiting = (data?.more || []).filter(s => allTiles.some(t => t.key === s.app_key)).length
+  const { tileOf } = useDailyApps()
+  const sources = (data?.sources || []).filter(s => tileOf(s))
+  // Apps waiting their turn; the ones Pocket Core does not let Hub read are not counted.
+  const waiting = (data?.more || []).filter(s => !s.off && tileOf(s)).length
   return <div className="today-page">
     <header className="today-heading"><div><h1>Today</h1><p>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · what your apps have for you, in one place.</p></div><button className="btn" onClick={refresh} disabled={loading}><Refresh /> {loading ? 'Refreshing…' : 'Refresh'}</button></header>
     <section className="quick-actions" aria-label="Quick actions">
@@ -54,8 +55,8 @@ export default function TodayPage() {
 const HOME_CARDS = 6
 export function HomeDailyOverview() {
   const { data, loading, error, refresh } = useDaily()
-  const { allTiles, reload } = useApp()
-  const sources = (data?.sources || []).filter(s => allTiles.some(t => t.key === s.app_key))
+  const { reload } = useApp(), { tileOf } = useDailyApps()
+  const sources = (data?.sources || []).filter(s => tileOf(s))
   if (!error && data && !sources.length) return null
   return <section className="home-daily" aria-label="Your day at a glance">
     <div className="section-head"><div><h2>Today</h2><p>What’s on for today, from your apps.</p></div><div className="row"><button className="iconbtn" aria-label="Refresh today" title="Refresh" disabled={loading} onClick={() => { void refresh(); void reload() }}><Refresh /></button><Link className="btn small ghost" to="/today">See all</Link></div></div>

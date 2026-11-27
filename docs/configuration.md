@@ -56,4 +56,4 @@ pocket-hub backup [-o FILE]       write a consistent SQLite backup
 pocket-hub version
 ```
 
-`GET /api/v1/daily?date=YYYY-MM-DD[&want=app_key,…]` returns personal app summaries and capture destinations, for every app on the person's list that declares a widget or quick capture in its manifest. `POST /api/v1/capture` saves a task, note, journal moment or any kind an app declares, with a per-user request ID. See [Today and capture](daily-and-capture.md) for the adapter boundaries and receipt behavior.
+`GET /api/v1/daily?date=YYYY-MM-DD[&want=app_key,…]` returns personal app summaries and capture destinations, for every app that offers a widget or quick capture to the person through a Core link (the two rules under Pocket Core → Links → Pocket Hub). `POST /api/v1/capture` saves a task, note, journal moment or any kind an app declares, with a per-user request ID. See [Today and capture](daily-and-capture.md) for the adapter boundaries and receipt behavior.

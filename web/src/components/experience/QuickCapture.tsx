@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useApp } from '../../lib/app-context'
 import { api, ApiError, V1 } from '../../lib/api'
-import { localDay, useDaily, type Destination } from '../../lib/daily-context'
+import { localDay, useDaily, useDailyApps, type Destination } from '../../lib/daily-context'
 import { Modal, OverlayPresence } from '../ui'
 import { Journal, Note, Task } from '../icons'
 
@@ -34,12 +33,13 @@ function choicesFrom(destinations: Destination[]): Choice[] {
 }
 
 export function QuickCapture() {
-  const { allTiles, open } = useApp()
+  const { tileOf, openApp } = useDailyApps()
   const { data, error: connectionError, loading, refresh } = useDaily()
   const [visible, setVisible] = useState(false), [draft, setDraft] = useState<Draft>(() => fresh())
   const [busy, setBusy] = useState(false), [problem, setProblem] = useState(''), [uncertain, setUncertain] = useState(false)
   const [saved, setSaved] = useState<{ app_key: string; label: string; url?: string } | null>(null)
-  const choices = choicesFrom((data?.destinations || []).filter(d => allTiles.some(t => t.key === d.app_key)))
+  const destinations = (data?.destinations || []).filter(d => tileOf(d))
+  const choices = choicesFrom(destinations)
   const choice = choices.find(c => c.id === draft.choice) || choices[0]
   const more = choices.slice(FIRST.length)
   const target = choice.targets.find(d => d.app_key === draft.app_key) || choice.targets[0]
@@ -82,11 +82,11 @@ export function QuickCapture() {
     } finally { setBusy(false) }
   }
   const reset = () => { setDraft(fresh(draft.choice)); setSaved(null); setUncertain(false); setProblem('') }
-  const openTarget = (at?: string) => { const tile = allTiles.find(t => t.key === (saved?.app_key || target?.app_key)); if (tile) { setVisible(false); open(tile, at) } }
+  const openTarget = (at?: string) => { const app = destinations.find(d => d.app_key === (saved?.app_key || target?.app_key)); if (app) { setVisible(false); openApp(app, at) } }
   const lower = choice.label.toLowerCase()
   const cells = (has('due') ? 1 : 0) + (has('date') ? 1 : 0) + 1
   return <OverlayPresence>{visible && <Modal className="capture-sheet" title={saved ? 'Saved' : 'Add something new'} onClose={() => setVisible(false)}>
-    {saved ? <div className="capture-success"><span>✓</span><h3>{saved.label} saved.</h3><p>You’ll find it in {allTiles.find(t => t.key === saved.app_key)?.name || 'your app'}.</p><div className="row">{saved.url ? <button className="btn primary" onClick={() => openTarget(saved.url)}>Open it</button> : <button className="btn primary" onClick={() => openTarget()}>Open app</button>}<button className="btn" onClick={reset}>Add another</button></div></div> : <form className="widget-form capture-form" onSubmit={e => { e.preventDefault(); void save() }}>
+    {saved ? <div className="capture-success"><span>✓</span><h3>{saved.label} saved.</h3><p>You’ll find it in {destinations.find(d => d.app_key === saved.app_key)?.name || 'your app'}.</p><div className="row">{saved.url ? <button className="btn primary" onClick={() => openTarget(saved.url)}>Open it</button> : <button className="btn primary" onClick={() => openTarget()}>Open app</button>}<button className="btn" onClick={reset}>Add another</button></div></div> : <form className="widget-form capture-form" onSubmit={e => { e.preventDefault(); void save() }}>
       <p className="capture-intro">A task to do, a note to keep, or a memory for your journal.{more.length > 0 && ' Your other apps are under More.'}</p>
       <fieldset disabled={busy || uncertain} className="capture-fields">
         <div className="capture-kinds" aria-label="Capture type">{choices.slice(0, FIRST.length).map(c => <button type="button" key={c.id} aria-pressed={choice.id === c.id} onClick={() => change({ choice: c.id, app_key: '' })}>{c.id === 'task' ? <Task size={18} /> : c.id === 'note' ? <Note size={18} /> : <Journal size={18} />} {c.label}</button>)}

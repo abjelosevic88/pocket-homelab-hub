@@ -82,7 +82,9 @@ Without `CORE_URL` the hub starts, signs you in with a password if `PASSWORD_LOG
 | What | Read as | Endpoint |
 |---|---|---|
 | the person's tiles | the person (their OIDC tokens from sign-in, refreshed; or the `pcd_`/`pcu_` token a phone presented) | `GET /api/v1/me/services` |
-| health, version, description of Pocket apps already on the list; what each app says about itself in its manifest: its `category` (the shelf it sits on), its `widget` and what it keeps from quick `capture` | the hub (`pca_`) | `GET /api/v1/apps` |
+| health, version, description of Pocket apps already on the list, and the `category` (shelf) an app names for itself | the hub (`pca_`) | `GET /api/v1/apps` |
+| which apps offer a widget or quick capture to this person, and whether each link is on | the hub, for the person's email | `GET /api/v1/links/status?user=&scope=pocket:widget` / `pocket:capture` |
+| a token to read one app's widget or keep one quick line there: valid only in that app, for that one scope, for five minutes | the hub, for the person's email | `POST /api/v1/links/token` |
 | box name, Core version, uptime | the hub | `GET /api/v1/system` |
 | activity | the person first (`GET /api/v1/events`, which Core answers only for admins), else the hub through its `events:read` links, filtered to the person | `GET /api/v1/events` |
 
@@ -90,16 +92,25 @@ Rules the feed applies before showing anything: an event that names a person (`u
 
 ### Widgets and quick capture come from the apps
 
-Hub has no list of apps it can show a widget for or send a quick line to. A Pocket app says so itself, in the manifest it registers with Core ([capabilities](https://github.com/abjelosevic88/pocket-homelab-core/blob/main/docs/capabilities.md)): `widget: {title, what}` and `capture: {kinds: [{kind, label, what, fields}]}`. Hub reads that from Core's registry and then asks the app as the person, with the person's own Core token:
+Hub has no list of apps it can show a widget for or send a quick line to. A Pocket app says so itself, in the manifest it registers with Core ([capabilities](https://github.com/abjelosevic88/pocket-homelab-core/blob/main/docs/capabilities.md)): `widget: {title, what}` and `capture: {kinds: [{kind, label, what, fields}]}`. Hub asks Core which apps offer that to the person and calls each one through a **Core link**:
 
 | What | Asked of the app | Becomes |
 |---|---|---|
-| the app's widget | `GET /api/v1/pocket/widget` | a source in `GET /api/v1/daily` (a card on Today, a widget in the gallery) |
-| a quick line | `POST /api/v1/pocket/capture` | a destination in `GET /api/v1/daily`, saved through `POST /api/v1/capture` |
+| the app's widget | `GET /api/v1/pocket/widget` with a link token for `pocket:widget` | a source in `GET /api/v1/daily` (a card on Today, a widget in the gallery) |
+| a quick line | `POST /api/v1/pocket/capture` with a link token for `pocket:capture` | a destination in `GET /api/v1/daily`, saved through `POST /api/v1/capture` |
 
-So a new app needs nothing in Hub: once it declares the capability and is on a person's list, its widget and its capture kinds are there. The person's token only ever goes to a Pocket app that is on their own list and registered with Core at exactly that address. Hub asks no links for this and declares no "every app" rule; the routes sit behind each app's normal sign-in. An app may also name its shelf (`category`); Hub uses it when it is one of its own shelves.
+So a new app needs nothing in Hub: once it offers the capability, its widget and its capture kinds are there.
 
-The hand-written adapters for Tasks, Habits, Kitchen, Notes and Day stay for versions of those apps that do not declare the capability yet. Once one of them does, Hub reads it through the contract only, and falls back to the old adapter when the route answers 404 or 405. Details: [Today and capture](docs/daily-and-capture.md).
+**Two switches in Pocket Core, once.** Hub's manifest asks for the two scopes in *every* app that offers them, as two rules. After updating Hub, an admin switches them on in Pocket Core → **Links** → Pocket Hub:
+
+- **Show a summary** (`pocket:widget`): "Show a few lines from each of your apps on your home screen and on Today"
+- **Keep a quick line** (`pocket:capture`): "Keep a quick line you type in Pocket Hub in the app you choose"
+
+From then on Core makes the link for every app that offers one, apps installed later included. The admin can still switch a single app off on the same page, and each person can switch a single app off for themselves in Pocket Core → Settings → *Apps acting for me*. An app whose link is off is not asked; its widget says why it is empty, and quick capture leaves it out.
+
+**What goes where.** A link token works only in the one app, only on the one route, for five minutes. The person's own Core token, which works as the person everywhere, is not used for any of this. It goes only where it always went: to Tasks, Habits, Kitchen, Notes and Day, on the hand-written routes below, at the address Core has for them.
+
+Those hand-written adapters stay for versions of the five apps that do not offer the capability yet, and for a person whose link to one of them is off. When the app offers it and the link is on, Hub uses the link only. An app may also name its shelf (`category`: "Money", "Home", "Media"…); Hub puts it on the nearest of its own shelves. Details: [Today and capture](docs/daily-and-capture.md).
 
 The hub's own API is small: `/api/v1/launcher`, `/activity`, `/daily`, `/capture`, `/prefs`, `/system`, and the usual `/auth/*`. It accepts the hub session cookie or a Core token (`Authorization: Bearer pcd_…`), so the Pocket Homelab app can read the same launcher. See [docs/configuration.md](docs/configuration.md).
 

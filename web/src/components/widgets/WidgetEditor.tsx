@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useApp } from '../../lib/app-context'
-import { useDaily } from '../../lib/daily-context'
+import { useDaily, useDailyApps } from '../../lib/daily-context'
 import { spacesFor } from '../../lib/experience'
 import { appWidget, appWidgets, validImageURL, widgetDefinition, widgetName, type HomeWidget, type WidgetConfig } from '../../lib/widgets'
 import { Modal } from '../ui'
 
 export function WidgetEditor({ widget, onSave, onClose }: { widget: HomeWidget; onSave: (config: WidgetConfig) => void; onClose: () => void }) {
-  const { allTiles, prefs } = useApp(), { data: daily } = useDaily()
+  const { allTiles, prefs } = useApp(), { data: daily } = useDaily(), { tileOf } = useDailyApps()
   const [config, setConfig] = useState<WidgetConfig>({ ...widget.config })
   const [error, setError] = useState('')
   const patch = (next: Partial<WidgetConfig>) => { setConfig(c => ({ ...c, ...next })); setError('') }
@@ -26,7 +26,7 @@ export function WidgetEditor({ widget, onSave, onClose }: { widget: HomeWidget; 
       {widget.kind === 'countdown' && <label>Look forward to<input type="date" value={config.targetDate || ''} onChange={e => patch({ targetDate: e.target.value })} /><small>Counts calendar days in this device’s time zone.</small></label>}
       {widget.kind === 'photo' && <label>Image address<input type="url" maxLength={1024} value={config.photoUrl || ''} placeholder="https://…/your-photo.jpg" onChange={e => patch({ photoUrl: e.target.value.trim() })} /><small>Your browser loads the image from this address. Use a direct image link you trust.</small></label>}
       {widget.kind === 'shortcut' && <label>App<select value={config.appKey || ''} onChange={e => patch({ appKey: e.target.value })}><option value="">Choose an app</option>{allTiles.map(t => <option key={t.key} value={t.key}>{t.name}</option>)}</select></label>}
-      {widget.kind === 'app' && <label>App<select value={appWidget(daily, config.appKey)?.app_key || ''} onChange={e => patch({ appKey: e.target.value })}><option value="">Choose an app</option>{appWidgets(daily).filter(a => allTiles.some(t => t.key === a.app_key)).map(a => <option key={a.app_key} value={a.app_key}>{a.name}{a.title ? ` · ${a.title}` : ''}</option>)}</select><small>{appWidget(daily, config.appKey)?.what || 'Every app that has a summary to show is listed here.'}</small></label>}
+      {widget.kind === 'app' && <label>App<select value={appWidget(daily, config.appKey)?.app_key || ''} onChange={e => patch({ appKey: e.target.value })}><option value="">Choose an app</option>{appWidgets(daily).filter(a => tileOf(a)).map(a => <option key={a.app_key} value={a.app_key}>{a.name}{a.title ? ` · ${a.title}` : ''}</option>)}</select><small>{appWidget(daily, config.appKey)?.what || 'Every app that has a summary to show is listed here.'}</small></label>}
       {widget.kind === 'space' && <label>Space<select value={config.spaceId || 'focus'} onChange={e => patch({ spaceId: e.target.value })}>{spacesFor(prefs).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>}
       {widget.kind === 'checklist' && <div className="widget-list-editor"><p>Up to 12 items. Tick them off here or on Home.</p>{(config.items || []).map(item => <div key={item.id}><input aria-label={`Complete ${item.text || 'item'}`} type="checkbox" checked={item.done} onChange={() => patch({ items: config.items!.map(i => i.id === item.id ? { ...i, done: !i.done } : i) })} /><input aria-label="Checklist item" value={item.text} maxLength={100} onChange={e => patch({ items: config.items!.map(i => i.id === item.id ? { ...i, text: e.target.value } : i) })} /><button className="text-button" type="button" aria-label={`Remove ${item.text || 'item'}`} onClick={() => patch({ items: config.items!.filter(i => i.id !== item.id) })}>×</button></div>)}<button type="button" className="btn small" disabled={(config.items?.length || 0) >= 12} onClick={() => patch({ items: [...(config.items || []), { id: crypto.randomUUID(), text: '', done: false }] })}>Add item</button></div>}
       {!['clock', 'note', 'countdown', 'photo', 'shortcut', 'space', 'checklist', 'app'].includes(widget.kind) && <p className="widget-form-help">{definition.description}</p>}

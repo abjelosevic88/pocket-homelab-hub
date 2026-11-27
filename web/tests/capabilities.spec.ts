@@ -143,16 +143,53 @@ test('what the app says is wrong with a capture is shown, and the draft can be s
   expect(attempts[0].request_id).not.toBe(attempts[1].request_id)
 })
 
-test('an app sits on the shelf it names for itself when Hub has that shelf', async ({ page, harness }) => {
-  // bookshelf is "Photos & media" in Hub's own table; podcasts too.
+test('an app Pocket Core does not let Hub read is listed with the reason, and its widget says why it is empty', async ({ page, harness }) => {
+  harness.apps.push(garden as any)
+  const reason = 'You switched this off in Pocket Core. You can switch it back on there, in Settings under Apps acting for me.'
+  harness.daily.more = [{ ...gardenApp, title: 'Garden today', what: 'What needs water and what is ready to pick', off: reason }]
+  harness.prefs = { home_widgets: [{ id: 'w1', kind: 'app', size: 'medium', config: { appKey: 'garden-9' } }] }
+  await page.goto(origin)
+  const widget = page.getByRole('article', { name: 'Garden today widget' })
+  await expect(widget).toContainText('You switched this off in Pocket Core')
+  await expect(widget.getByRole('button', { name: /Choose an app/ })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Add widgets' }).click()
+  await page.locator('.widget-choices>button').filter({ hasText: 'Garden today' }).click()
+  await expect(page.locator('.widget-gallery-off')).toHaveText(reason)
+  // It is not counted among the apps that only wait their turn.
+  await page.keyboard.press('Escape')
+  await page.goto(origin + '/today')
+  await expect(page.locator('.daily-more')).toHaveCount(0)
+})
+
+test('an app linked for the person that is not on their launcher list still shows, and opens at its own address', async ({ page, harness }) => {
+  const shed = { app_key: 'shed', kind: 'shed', name: 'Pocket Shed', icon: '/icons/pocket-notes.svg', app_url: 'https://shed.pocket.test' }
+  harness.daily.sources = [{ ...shed, title: 'Shed', state: 'ready', line: '1 tool lent out', metrics: [], figures: [], items: [{ id: 3, ref: '3', title: 'Spade', url: 'https://shed.pocket.test/tool/3' }] }]
+  harness.daily.destinations.push({ ...shed, capture_kind: 'tool', label: 'Tool', fields: ['title'] })
+  await page.goto(origin + '/today')
+  const card = page.getByRole('article', { name: 'Pocket Shed summary' })
+  await expect(card).toContainText('1 tool lent out')
+  await expect(card.locator('img')).toHaveAttribute('src', '/icons/pocket-notes.svg')
+  const [tab] = await Promise.all([page.waitForEvent('popup'), card.getByRole('button', { name: /Spade/ }).click()])
+  expect(tab.url()).toBe('https://shed.pocket.test/tool/3')
+  await expect(page).toHaveURL(/\/today$/)
+  await page.getByRole('button', { name: 'Quick capture', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: 'More things to add' }).locator('option')).toHaveText(['More…', 'Tool'])
+})
+
+test('an app sits on the shelf it names for itself, in its own word', async ({ page, harness }) => {
+  // bookshelf and podcasts are "Photos & media" in Hub's own table.
   harness.apps = harness.apps.map(t => t.type === 'bookshelf' ? { ...t, category: 'everyday' } : t.type === 'podcasts' ? { ...t, category: 'Gardening' } : t) as any
-  harness.apps.push({ ...garden, category: ' Media ' } as any, { ...garden, key: 'shed-10', id: 10, type: 'shed', name: 'Pocket Shed', category: 'Sheds' } as any)
+  harness.apps.push({ ...garden, category: ' Media ' } as any, { ...garden, key: 'shed-10', id: 10, type: 'shed', name: 'Pocket Shed', category: 'Home' } as any,
+    { ...garden, key: 'ledger-11', id: 11, type: 'ledger', name: 'Pocket Ledger', category: 'FINANCE' } as any, { ...garden, key: 'barn-12', id: 12, type: 'barn', name: 'Pocket Barn', category: 'Barns' } as any)
   await page.goto(origin)
   const shelf = page.locator('.home-apps .app-shelf')
-  await expect(shelf.locator('.shelf-label')).toHaveText(['Everyday5', 'Photos & media2', 'More apps1'])
+  await expect(shelf.locator('.shelf-label')).toHaveText(['Everyday5', 'Money1', 'Photos & media2', 'Life & places1', 'More apps1'])
   await page.goto(origin + '/apps')
   await expect(page.getByRole('region', { name: 'Everyday' })).toContainText('Bookshelf')
   await expect(page.getByRole('region', { name: 'Photos & media' })).toContainText('Garden')
+  // A word that is no shelf leaves the app where Hub's own table has it.
   await expect(page.getByRole('region', { name: 'Photos & media' })).toContainText('Podcasts')
-  await expect(page.getByRole('region', { name: 'More apps' })).toContainText('Shed')
+  await expect(page.getByRole('region', { name: 'Life & places' })).toContainText('Shed')
+  await expect(page.getByRole('region', { name: 'Money' })).toContainText('Ledger')
+  await expect(page.getByRole('region', { name: 'More apps' })).toContainText('Barn')
 })

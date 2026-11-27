@@ -17,15 +17,19 @@ const CATEGORIES: [string, string[]][] = [
 const BY_TYPE = new Map(CATEGORIES.flatMap(([name, types]) => types.map(t => [t, name] as [string, string])))
 const ORDER = CATEGORIES.map(([name]) => name)
 
-// An app may name its own shelf in its manifest ("Money", "media"). The word is
-// taken when it is one of the shelves above, whole or one of its words (so
-// "Media" and "Photos" both mean "Photos & media"); any other word falls back
-// to the table, so shelves stay the familiar eight.
-const SHELF = new Map<string, string>()
-for (const name of ORDER) {
-  SHELF.set(name.toLowerCase(), name)
-  for (const word of name.toLowerCase().split(/[^a-z]+/)) if (word && word !== 'your') SHELF.set(word, name)
-}
+// An app may name its own shelf in its manifest, in its own word ("Money",
+// "Home", "media"). The word is taken when it is one of the shelves above, or
+// a common word for one; any other word falls back to the table, so the
+// shelves stay the familiar eight.
+const SYNONYMS: [string, string[]][] = [
+  ['Life & places', ['home', 'family', 'health', 'life', 'travel', 'places']],
+  ['Files & work', ['work', 'documents', 'files']],
+  ['Photos & media', ['media', 'photos', 'music', 'video', 'books', 'reading']],
+  ['Money', ['finance']],
+  ['Your box', ['system', 'box']],
+  ['Tools', ['utilities']],
+]
+const SHELF = new Map<string, string>([...ORDER.map(name => [name.toLowerCase(), name] as [string, string]), ...SYNONYMS.flatMap(([name, words]) => words.map(w => [w, name] as [string, string]))])
 export const shelfFor = (category: string | undefined) => SHELF.get((category || '').trim().toLowerCase())
 
 export function categoryOf(t: Pick<Tile, 'type' | 'group' | 'pocket' | 'category'>): string {

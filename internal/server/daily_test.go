@@ -23,8 +23,13 @@ type dailyFixture struct {
 	mismatch atomic.Bool
 
 	mu        sync.Mutex
+	appURL    string                    // where the five first-party apps live
 	manifests map[string]map[string]any // what a first-party app declares, by slug
 	extra     []extraApp                // apps Hub has no adapter for (Ann's only)
+	links     map[string]string         // "<slug> <scope>" → a state other than "on"
+	unlisted  map[string]bool           // apps linked for Ann that are not on her launcher list
+	asked     map[string]int            // link tokens Core was asked for, by "<slug> <scope>"
+	statuses  atomic.Int32              // how often Core was asked who offers a capability
 }
 
 type extraApp struct {
@@ -32,17 +37,24 @@ type extraApp struct {
 	manifest  map[string]any
 }
 
-// declare sets the manifest Core has for one of the first-party apps.
+// declare sets the manifest Core has for one of the first-party apps. An app
+// that declares "widget" or "capture" offers it through a link, on by default.
 func (f *dailyFixture) declare(slug string, manifest map[string]any) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.manifests[slug] = manifest
 }
 
-// add registers an app Hub has never heard of, on its own address, and puts it on Ann's list.
+// add registers an app Hub has never heard of, on its own address, and puts it
+// on Ann's list. Such an app must never see a person's own token.
 func (f *dailyFixture) add(t *testing.T, slug string, manifest map[string]any, handler http.HandlerFunc) *httptest.Server {
 	t.Helper()
-	app := httptest.NewServer(handler)
+	app := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if bearer := r.Header.Get("Authorization"); !strings.HasPrefix(bearer, "Bearer pcx_") {
+			t.Errorf("%s was called with %q: only a link token may reach an app Hub has no adapter for", slug, bearer)
+		}
+		handler(w, r)
+	}))
 	t.Cleanup(app.Close)
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -50,10 +62,58 @@ func (f *dailyFixture) add(t *testing.T, slug string, manifest map[string]any, h
 	return app
 }
 
+// setLink changes how a link stands for Ann (off_admin, off_person, on) and
+// makes Hub forget what it remembered about her links.
+func (f *dailyFixture) setLink(slug, scope, state string) {
+	f.mu.Lock()
+	f.links[slug+" "+scope] = state
+	f.mu.Unlock()
+	f.s.forgetCapable("ann@example.com")
+}
+
+// tokens is how many link tokens Core was asked for, for one app and scope.
+func (f *dailyFixture) tokens(slug, scope string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.asked[slug+" "+scope]
+}
+
+// offered lists, under the lock, every app with its address and manifest.
+func (f *dailyFixture) offered() []extraApp {
+	out := []extraApp{}
+	for _, kind := range personalKinds {
+		out = append(out, extraApp{slug: kind, url: f.appURL, manifest: f.manifests[kind]})
+	}
+	return append(out, f.extra...)
+}
+
+// linkState is how Hub's link to an app stands for a person, as Core would say.
+func (f *dailyFixture) linkState(user string, x extraApp, scope string) string {
+	if x.manifest[strings.TrimPrefix(scope, "pocket:")] == nil {
+		return "not_offered"
+	}
+	if user != "ann@example.com" && !(user == "bob@example.com" && x.slug == "notes") {
+		return "not_in_audience"
+	}
+	if state := f.links[x.slug+" "+scope]; state != "" {
+		return state
+	}
+	return "on"
+}
+
 func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 	t.Helper()
-	f := &dailyFixture{manifests: map[string]map[string]any{}}
-	app := httptest.NewServer(handler)
+	f := &dailyFixture{manifests: map[string]map[string]any{}, links: map[string]string{}, unlisted: map[string]bool{}, asked: map[string]int{}}
+	// The rule every test keeps: the person's own token never reaches a
+	// capability route, and a link token never reaches another route.
+	app := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bearer, contract := r.Header.Get("Authorization"), strings.HasPrefix(r.URL.Path, "/api/v1/pocket/")
+		if contract != strings.HasPrefix(bearer, "Bearer pcx_") {
+			t.Errorf("%s was called with %q", r.URL.Path, bearer)
+		}
+		handler(w, r)
+	}))
+	f.appURL = app.URL
 	t.Cleanup(app.Close)
 	core := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -72,7 +132,7 @@ func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 				}
 				f.mu.Lock()
 				for i, x := range f.extra {
-					if r.Header.Get("Authorization") != "Bearer pcu_ann" {
+					if r.Header.Get("Authorization") != "Bearer pcu_ann" || f.unlisted[x.slug] {
 						continue
 					}
 					target := x.url
@@ -98,6 +158,53 @@ func dailySetup(t *testing.T, handler http.HandlerFunc) *dailyFixture {
 			}
 			f.mu.Unlock()
 			writeJSON(w, 200, apps)
+		case "/api/v1/links/status":
+			// Who offers a capability to this person, and how each link stands (sdk.Capable).
+			f.statuses.Add(1)
+			if r.Header.Get("Authorization") != "Bearer pca_hub" {
+				t.Error("links not read as hub")
+			}
+			user, scope := r.URL.Query().Get("user"), r.URL.Query().Get("scope")
+			rows := []map[string]any{}
+			f.mu.Lock()
+			for _, x := range f.offered() {
+				state := f.linkState(user, x, scope)
+				if state == "not_offered" {
+					continue
+				}
+				target := map[string]any{"name": "Pocket " + x.slug, "icon": x.url + "/favicon.svg", "url": x.url, "public_url": x.url}
+				for k, v := range x.manifest {
+					target[k] = v
+				}
+				rows = append(rows, map[string]any{"app": x.slug, "scope": scope, "state": state, "on": state == "on", "detail": state, "target": target})
+			}
+			f.mu.Unlock()
+			writeJSON(w, 200, rows)
+		case "/api/v1/links/token":
+			// A token that works only in the target app, for the scopes asked (sdk.ActAs).
+			if r.Header.Get("Authorization") != "Bearer pca_hub" {
+				t.Error("link token not asked as hub")
+			}
+			var in struct {
+				User, App string
+				Scopes    []string
+			}
+			_ = json.NewDecoder(r.Body).Decode(&in)
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			for _, x := range f.offered() {
+				if x.slug != in.App || len(in.Scopes) != 1 {
+					continue
+				}
+				f.asked[x.slug+" "+in.Scopes[0]]++
+				if state := f.linkState(in.User, x, in.Scopes[0]); state != "on" {
+					writeJSON(w, 403, map[string]any{"error": x.slug + " " + in.Scopes[0] + ": " + state, "reason": state, "scope": in.Scopes[0]})
+					return
+				}
+				writeJSON(w, 200, map[string]any{"access_token": "pcx_" + strings.TrimSuffix(in.User, "@example.com") + "_" + x.slug, "expires_in": 300, "scope": in.Scopes[0], "app": x.slug, "url": x.url, "public_url": x.url})
+				return
+			}
+			writeJSON(w, 403, map[string]any{"error": "no such app", "reason": "target_missing"})
 		case "/api/v1/auth/subject":
 			writeJSON(w, 200, map[string]any{"active": true, "iss": "core"})
 		default:

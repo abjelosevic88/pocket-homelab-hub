@@ -19,15 +19,19 @@ import (
 	core "github.com/abjelosevic88/pocket-homelab-core/sdk"
 )
 
-// Hub talks to an app as the person, with the person's own Core token. It does
-// so only for a Pocket app that is on the person's list and registered with
-// Core at exactly that address, and only when the app either declares a widget
-// or quick capture in its manifest (Core docs/capabilities.md) or is one of the
-// first-party apps below.
+// Hub reaches a person's apps in two ways, and never mixes them.
+//
+// Any app that offers a widget or quick capture (Core docs/capabilities.md) is
+// reached through a Core link: Hub declares "every app" rules for the two
+// scopes, asks Core who offers them for this person (Capable) and calls the app
+// with a link token that works only in that app, for that one route, for a few
+// minutes (WidgetIn, CaptureIn).
+//
+// The five first-party apps below also have a hand-written adapter that calls
+// the app with the person's own Core token. That token goes only to those
+// apps, only on their old routes, and only at the address the person's list and
+// Core's registry agree on. It is never sent to a capability route.
 var personalAppHTTP = &http.Client{Timeout: 8 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
-
-// The apps Hub has a hand-written adapter for. They stay as the fallback for
-// app versions that do not declare the capability yet.
 var personalKinds = []string{"tasks", "habits", "kitchen", "notes", "day"}
 
 const (
@@ -36,20 +40,37 @@ const (
 	maxDailySources = 24
 	// maxWidgetItems is the contract's own limit for a widget's rows.
 	maxWidgetItems = 8
-	// contractRetry is how long Hub keeps to the hand-written adapter after a
-	// first-party app answered 404/405 on the contract route (an older version).
-	contractRetry = 10 * time.Minute
+	// capableTTL is how long Hub remembers who offers a capability to a person.
+	// A link switched off still stops the very next call: tokens are never kept.
+	capableTTL = 45 * time.Second
+	// capableMax bounds that memory (people × two scopes).
+	capableMax = 512
 )
 
 type personalApp struct {
-	Key  string `json:"app_key"`
-	Kind string `json:"kind"` // the app's slug in Core
+	Key  string `json:"app_key"` // "<type>-<id>" of the person's launcher entry, or the slug for an app that is not on their list
+	Kind string `json:"kind"`    // the app's slug in Core
 	Name string `json:"name"`
 	Icon string `json:"icon,omitempty"`
-	URL  string `json:"-"`
-	// What the app declared in its manifest; nil when it did not.
-	widget  *core.Widget
-	capture *core.QuickCapture
+	// AppURL is where a browser opens an app that is linked for the person
+	// but not on their launcher list; empty when the list has it.
+	AppURL string `json:"app_url,omitempty"`
+	// URL is the address the hand-written adapters call with the person's own
+	// token. It is set only for the first-party apps that passed the address check.
+	URL string `json:"-"`
+	// public is the address of the app as Core has it; addresses the app sends must be inside it.
+	public string
+	// What the app offers through Core links, and how each link stands for the person.
+	widget      *core.Widget
+	widgetLink  linkStand
+	capture     *core.QuickCapture
+	captureLink linkStand
+}
+
+// linkStand is one Core link for one person: on, or the reason it is not.
+type linkStand struct {
+	on    bool
+	state string
 }
 
 // dailyItem keeps the numeric id older clients read; Ref is the app's own id
@@ -87,11 +108,14 @@ type dailySource struct {
 	Open    string        `json:"url,omitempty"` // the place in the app the widget is about
 }
 
-// dailyOffer is an app with a widget that this request did not ask.
+// dailyOffer is an app with a widget that this request did not ask: it waits
+// its turn (Off empty), or Core does not let Hub read it for this person (Off
+// says why, in a sentence).
 type dailyOffer struct {
 	personalApp
 	Title string `json:"title,omitempty"`
 	What  string `json:"what,omitempty"`
+	Off   string `json:"off,omitempty"`
 }
 
 func hardWired(kind string) int {
@@ -103,10 +127,28 @@ func hardWired(kind string) int {
 	return -1
 }
 
-// hardSource reports whether the hand-written adapters can read the app's day.
-func hardSource(kind string) bool { return hardWired(kind) >= 0 && kind != "day" }
+// hardSource reports whether a hand-written adapter can read the app's day.
+func (a personalApp) hardSource() bool {
+	return a.URL != "" && hardWired(a.Kind) >= 0 && a.Kind != "day"
+}
 
-func (a personalApp) source() bool { return a.widget != nil || hardSource(a.Kind) }
+// linkedWidget reports whether the app's widget can be read through a Core link now.
+func (a personalApp) linkedWidget() bool { return a.widget != nil && a.widgetLink.on }
+
+func (a personalApp) source() bool { return a.linkedWidget() || a.hardSource() }
+
+// linkOffSentence says why Core does not let Hub act in an app for the person.
+func linkOffSentence(state string) string {
+	switch state {
+	case "off_person":
+		return "You switched this off in Pocket Core. You can switch it back on there, in Settings under Apps acting for me."
+	case "off_admin":
+		return "Not allowed in Pocket Core yet. The person who looks after your box can switch it on there, under Links."
+	case "not_in_audience":
+		return "This app is not on your list in Pocket Core."
+	}
+	return "Pocket Core does not let Pocket Hub use this app for you right now."
+}
 
 // oneLine folds whitespace and cuts to max characters.
 func oneLine(s string, max int) string {
@@ -120,13 +162,13 @@ func oneLine(s string, max int) string {
 // appLink turns an address an app sent into one a browser can open, and keeps
 // it inside that app: a path is joined to the app's address, a full address is
 // kept only when it is the app's own.
-func appLink(app personalApp, raw string) string {
+func appLink(appURL, raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || len(raw) > 2000 {
 		return ""
 	}
-	base, err := url.Parse(app.URL)
-	if err != nil {
+	base, err := url.Parse(appURL)
+	if err != nil || base.Host == "" {
 		return ""
 	}
 	u, err := url.Parse(raw)
@@ -134,14 +176,14 @@ func appLink(app personalApp, raw string) string {
 		return ""
 	}
 	if u.Scheme == "" && u.Host == "" {
-		if u, err = url.Parse(app.URL + "/" + strings.TrimLeft(raw, "/")); err != nil {
+		if u, err = url.Parse(strings.TrimRight(appURL, "/") + "/" + strings.TrimLeft(raw, "/")); err != nil {
 			return ""
 		}
 	}
 	if u.Scheme != base.Scheme || u.Host != base.Host || u.User != nil {
 		return ""
 	}
-	if u.Path != base.Path && !strings.HasPrefix(u.Path, strings.TrimRight(base.Path, "/")+"/") {
+	if root := strings.TrimRight(base.Path, "/"); u.Path != root && !strings.HasPrefix(u.Path, root+"/") {
 		return ""
 	}
 	return u.String()
@@ -159,6 +201,57 @@ func approvedAppURL(raw string) string {
 	return strings.TrimRight(u.String(), "/")
 }
 
+// capable asks Core which apps offer a capability to this person and how the
+// link to each stands, and remembers the answer for a short while. No Core, an
+// older Core or a failure means: nobody.
+func (s *Server) capable(ctx context.Context, email, scope string) []core.CapableApp {
+	if email == "" || !s.core.Configured() || s.core.Token() == "" {
+		return nil
+	}
+	type entry struct {
+		apps []core.CapableApp
+		at   time.Time
+	}
+	key := scope + " " + strings.ToLower(email)
+	s.capableMu.Lock()
+	e, ok := s.capableSeen[key].(entry)
+	s.capableMu.Unlock()
+	if ok && time.Since(e.at) < capableTTL {
+		return e.apps
+	}
+	apps, err := s.core.Capable(ctx, email, scope)
+	if err != nil {
+		s.log.Debug("pocket core: who offers "+scope, "err", err)
+		return nil
+	}
+	s.capableMu.Lock()
+	defer s.capableMu.Unlock()
+	if len(s.capableSeen) >= capableMax {
+		for k, v := range s.capableSeen {
+			if time.Since(v.(entry).at) >= capableTTL {
+				delete(s.capableSeen, k)
+			}
+		}
+		if len(s.capableSeen) >= capableMax {
+			s.capableSeen = map[string]any{}
+		}
+	}
+	s.capableSeen[key] = entry{apps: apps, at: time.Now()}
+	return apps
+}
+
+// forgetCapable drops what Hub remembers about a person's links, after Core
+// refused one that was on a moment ago.
+func (s *Server) forgetCapable(email string) {
+	s.capableMu.Lock()
+	defer s.capableMu.Unlock()
+	for _, scope := range []string{core.ScopeWidget, core.ScopeCapture} {
+		delete(s.capableSeen, scope+" "+strings.ToLower(email))
+	}
+}
+
+// personalApps lists the apps Hub may talk to for this person, and returns the
+// person's own Core token for the hand-written adapters.
 func (s *Server) personalApps(ctx context.Context, p *principal) ([]personalApp, string, error) {
 	token, err := s.userCoreToken(ctx, p)
 	if err != nil {
@@ -173,29 +266,69 @@ func (s *Server) personalApps(ctx context.Context, p *principal) ([]personalApp,
 	if _, err := s.coreGet(ctx, "/api/v1/apps", s.core.Token(), &apps); err != nil {
 		return nil, "", err
 	}
-	registry := map[string]coreApp{}
-	for _, app := range apps {
-		registry[app.Slug] = app
-	}
 	out := []personalApp{}
-	for _, sv := range services {
-		if !sv.Pocket || sv.Type == "hub" {
-			continue
+	at := map[string]int{} // slug → index in out
+	// The first-party apps, for the hand-written adapters: on the person's list,
+	// and registered with Core at exactly that address.
+	for _, kind := range personalKinds {
+		for _, sv := range services {
+			if !sv.Pocket || sv.Type != kind {
+				continue
+			}
+			target := approvedAppURL(sv.URL)
+			if target == "" {
+				continue
+			}
+			for _, app := range apps {
+				if app.Slug == kind && target == approvedAppURL(app.PublicURL) {
+					if _, dup := at[kind]; !dup {
+						at[kind] = len(out)
+					}
+					out = append(out, personalApp{Key: fmt.Sprintf("%s-%d", sv.Type, sv.ID), Kind: kind, Name: sv.Name, Icon: sv.Icon, URL: target, public: target})
+					break
+				}
+			}
 		}
-		// The person's token only goes to the address Core has for the app.
-		target := approvedAppURL(sv.URL)
-		reg, ok := registry[sv.Type]
-		if target == "" || !ok || target != approvedAppURL(reg.PublicURL) {
-			continue
+	}
+	// Every app that offers a widget or quick capture through a Core link. The
+	// person's Core email names them; a session without one has no such apps.
+	email := p.user.Email
+	linked := func(a core.CapableApp) *personalApp {
+		if i, ok := at[a.App]; ok {
+			return &out[i]
 		}
-		app := personalApp{Key: fmt.Sprintf("%s-%d", sv.Type, sv.ID), Kind: sv.Type, Name: sv.Name, Icon: sv.Icon, URL: target, widget: reg.Manifest.Widget}
-		if c := reg.Manifest.Capture; c != nil && len(c.Kinds) > 0 {
-			app.capture = c
+		app := personalApp{Key: a.App, Kind: a.App, Name: firstNonEmpty(a.Name, a.App), Icon: a.Icon, public: strings.TrimRight(firstNonEmpty(a.PublicURL, a.URL), "/")}
+		app.AppURL = app.public
+		for _, sv := range services {
+			if sv.Pocket && sv.Type == a.App {
+				app.Key, app.Name, app.AppURL = fmt.Sprintf("%s-%d", sv.Type, sv.ID), firstNonEmpty(sv.Name, app.Name), ""
+				app.Icon = firstNonEmpty(sv.Icon, app.Icon)
+				break
+			}
 		}
-		if hardWired(app.Kind) < 0 && app.widget == nil && app.capture == nil {
-			continue
-		}
+		at[a.App] = len(out)
 		out = append(out, app)
+		return &out[len(out)-1]
+	}
+	// An app whose link is off is kept only when a switch in Core is the
+	// reason, so its empty widget can say so; an app the person may not use at
+	// all is not mentioned.
+	shown := func(a core.CapableApp) bool {
+		return a.App != "hub" && (a.On || a.State == "off_admin" || a.State == "off_person")
+	}
+	for _, a := range s.capable(ctx, email, core.ScopeWidget) {
+		if !shown(a) || a.Widget == nil {
+			continue
+		}
+		app := linked(a)
+		app.widget, app.widgetLink = a.Widget, linkStand{on: a.On, state: a.State}
+	}
+	for _, a := range s.capable(ctx, email, core.ScopeCapture) {
+		if !shown(a) || a.Capture == nil || len(a.Capture.Kinds) == 0 {
+			continue
+		}
+		app := linked(a)
+		app.capture, app.captureLink = a.Capture, linkStand{on: a.On, state: a.State}
 	}
 	// The apps Hub has always known first, in their old order; the rest by name.
 	sort.SliceStable(out, func(i, j int) bool {
@@ -211,21 +344,18 @@ func (s *Server) personalApps(ctx context.Context, p *principal) ([]personalApp,
 	return out, token, nil
 }
 
-// personalDo makes one request to the app as the person. It returns the status
-// and the body; anything but a 2xx is an error, with the body kept so a
-// refusal's own words can be read.
-func personalDo(ctx context.Context, app personalApp, token, method, path string, payload any) (int, []byte, error) {
+func personalRequest(ctx context.Context, app personalApp, token, method, path string, payload any, out any) (int, error) {
 	var body io.Reader
 	if payload != nil {
 		b, err := json.Marshal(payload)
 		if err != nil {
-			return 0, nil, err
+			return 0, err
 		}
 		body = bytes.NewReader(b)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, app.URL+path, body)
+	req, err := http.NewRequestWithContext(ctx, method, app.URL+"/api/v1"+path, body)
 	if err != nil {
-		return 0, nil, err
+		return 0, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/json")
@@ -235,31 +365,22 @@ func personalDo(ctx context.Context, app personalApp, token, method, path string
 	}
 	res, err := personalAppHTTP.Do(req)
 	if err != nil {
-		return 0, nil, err
+		return 0, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		data, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
-		return res.StatusCode, data, errors.New("app request refused")
+		return res.StatusCode, errors.New("app request refused")
 	}
 	data, err := io.ReadAll(io.LimitReader(res.Body, (2<<20)+1))
 	if err != nil || len(data) > 2<<20 {
-		return res.StatusCode, nil, errors.New("app response could not be read")
-	}
-	return res.StatusCode, data, nil
-}
-
-func personalRequest(ctx context.Context, app personalApp, token, method, path string, payload any, out any) (int, error) {
-	status, data, err := personalDo(ctx, app, token, method, "/api/v1"+path, payload)
-	if err != nil {
-		return status, err
+		return res.StatusCode, errors.New("app response could not be read")
 	}
 	if out != nil {
 		if err := json.Unmarshal(data, out); err != nil {
-			return status, errors.New("app response format is not supported")
+			return res.StatusCode, errors.New("app response format is not supported")
 		}
 	}
-	return status, nil
+	return res.StatusCode, nil
 }
 
 func validDay(date string) bool {
@@ -281,7 +402,7 @@ func pickSources(apps []personalApp, want map[string]bool) (ask, rest []personal
 		switch {
 		case want[app.Key]:
 			return 0
-		case hardSource(app.Kind):
+		case app.hardSource():
 			return 1
 		}
 		return 2
@@ -318,7 +439,8 @@ func (s *Server) handleDaily(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "Use a date in YYYY-MM-DD format.")
 		return
 	}
-	apps, token, err := s.personalApps(r.Context(), principalFrom(r.Context()))
+	p := principalFrom(r.Context())
+	apps, token, err := s.personalApps(r.Context(), p)
 	if err != nil {
 		writeErr(w, http.StatusServiceUnavailable, "Your apps could not be connected. Try refreshing or signing in again.")
 		return
@@ -343,6 +465,15 @@ func (s *Server) handleDaily(w http.ResponseWriter, r *http.Request) {
 		offer.Title, offer.What = widgetWords(app)
 		more = append(more, offer)
 	}
+	// An app that has a widget Core does not let Hub read for this person is
+	// not asked; it is listed with the reason, so an empty widget explains itself.
+	for _, app := range apps {
+		if app.widget != nil && !app.source() {
+			offer := dailyOffer{personalApp: app, Off: linkOffSentence(app.widgetLink.state)}
+			offer.Title, offer.What = widgetWords(app)
+			more = append(more, offer)
+		}
+	}
 	var wg sync.WaitGroup
 	for i := range sources {
 		wg.Add(1)
@@ -350,9 +481,15 @@ func (s *Server) handleDaily(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 			defer cancel()
-			if err := s.loadSource(ctx, &sources[i], token, date); err != nil {
+			if err := s.loadSource(ctx, &sources[i], p.user.Email, token, date); err != nil {
 				sources[i].State = "unavailable"
 				sources[i].Message = "This app couldn’t be refreshed. Open it or try again shortly."
+				var off *core.LinkError
+				if errors.As(err, &off) {
+					// The link was on a moment ago and Core has just refused it.
+					sources[i].Message = linkOffSentence(off.Reason)
+					s.forgetCapable(p.user.Email)
+				}
 				sources[i].Line, sources[i].Open = "", ""
 				sources[i].Items = []dailyItem{}
 				sources[i].Metrics = []dailyMetric{}
@@ -372,37 +509,31 @@ func widgetWords(app personalApp) (title, what string) {
 	return oneLine(app.widget.Title, 80), oneLine(app.widget.What, 200)
 }
 
-func contractAbsent(status int) bool {
-	return status == http.StatusNotFound || status == http.StatusMethodNotAllowed
+// useHardWired reports whether a failed call through a Core link leaves the
+// hand-written adapter as the way to go: Core has just refused the link, or
+// the app that runs is older than its manifest and does not serve the route.
+func useHardWired(err error) bool {
+	var off *core.LinkError
+	var refused *core.CapabilityError
+	if errors.As(err, &off) {
+		return true
+	}
+	return errors.As(err, &refused) && (refused.Status == http.StatusNotFound || refused.Status == http.StatusMethodNotAllowed)
 }
 
-// contractMissing reports whether the app answered 404/405 on a contract
-// route a little while ago: its manifest names the capability, the version
-// that runs does not serve it yet.
-func (s *Server) contractMissing(app personalApp, capability string) bool {
-	at, ok := s.absent.Load(capability + " " + app.URL)
-	return ok && time.Since(at.(time.Time)) < contractRetry
-}
-
-func (s *Server) rememberContractMissing(app personalApp, capability string) {
-	s.absent.Store(capability+" "+app.URL, time.Now())
-}
-
-// loadSource fills one app's part of the day: from the widget route when the
-// app declares one, else with the hand-written adapter. An app Hub has an
-// adapter for falls back to it when the widget route is not there (404/405).
-func (s *Server) loadSource(ctx context.Context, dst *dailySource, token, date string) error {
+// loadSource fills one app's part of the day: through the Core link when the
+// app offers a widget and the link is on for the person, else with the
+// hand-written adapter (first-party apps only, with the person's own token).
+func (s *Server) loadSource(ctx context.Context, dst *dailySource, email, token, date string) error {
 	app := dst.personalApp
-	hard := hardSource(app.Kind)
-	if app.widget != nil && !(hard && s.contractMissing(app, "widget")) {
-		status, err := loadWidget(ctx, dst, token)
-		if err == nil || !hard || !contractAbsent(status) {
+	if app.linkedWidget() {
+		err := s.loadWidget(ctx, dst, email)
+		if err == nil || !app.hardSource() || !useHardWired(err) {
 			return err
 		}
-		s.rememberContractMissing(app, "widget")
 	}
-	if !hard {
-		return errors.New("the app has no widget")
+	if !app.hardSource() {
+		return errors.New("the app has no widget for this person")
 	}
 	if err := loadDailySource(ctx, dst, token, date); err != nil {
 		return err
@@ -413,22 +544,20 @@ func (s *Server) loadSource(ctx context.Context, dst *dailySource, token, date s
 	return nil
 }
 
-// loadWidget reads the app's widget (GET /api/v1/pocket/widget) as the person
-// and puts it in the shape /daily has always had.
-func loadWidget(ctx context.Context, dst *dailySource, token string) (int, error) {
+// loadWidget reads the app's widget for the person with a link token (the
+// person's own token is not involved) and puts it in the shape /daily has
+// always had.
+func (s *Server) loadWidget(ctx context.Context, dst *dailySource, email string) error {
 	app := dst.personalApp
-	status, body, err := personalDo(ctx, app, token, http.MethodGet, core.WidgetPath, nil)
+	data, err := s.core.WidgetIn(ctx, email, app.Kind)
 	if err != nil {
-		return status, err
+		return err
 	}
-	// An answer without "items" is something else than a widget; never show it as an empty one.
-	var keys map[string]json.RawMessage
-	var data core.WidgetData
-	if json.Unmarshal(body, &keys) != nil || keys["items"] == nil || json.Unmarshal(body, &data) != nil {
-		return status, errors.New("app response format is not supported")
+	// The SDK answers the app's own front door when the widget names no place; that is no place.
+	if dst.Open = appLink(app.public, data.URL); strings.TrimRight(dst.Open, "/") == app.public {
+		dst.Open = ""
 	}
 	dst.Line = oneLine(data.Line, 200)
-	dst.Open = appLink(app, data.URL)
 	for _, m := range data.Metrics {
 		label, value := oneLine(m.Label, 40), oneLine(m.Value, 40)
 		if label == "" || value == "" {
@@ -451,12 +580,12 @@ func loadWidget(ctx context.Context, dst *dailySource, token string) (int, error
 		if err != nil || id <= 0 {
 			id = -int64(len(dst.Items) + 1)
 		}
-		dst.Items = append(dst.Items, dailyItem{ID: id, Ref: oneLine(it.ID, 100), Title: title, Detail: oneLine(it.Detail, 200), Done: it.Done, URL: appLink(app, it.URL)})
+		dst.Items = append(dst.Items, dailyItem{ID: id, Ref: oneLine(it.ID, 100), Title: title, Detail: oneLine(it.Detail, 200), Done: it.Done, URL: appLink(app.public, it.URL)})
 		if len(dst.Items) == maxWidgetItems {
 			break
 		}
 	}
-	return status, nil
+	return nil
 }
 
 func loadDailySource(ctx context.Context, dst *dailySource, token, date string) error {

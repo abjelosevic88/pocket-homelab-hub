@@ -49,7 +49,9 @@ type Server struct {
 	refreshMu sync.Mutex
 	refreshes map[string]*sync.Mutex // per session: one refresh at a time
 	cache     sync.Map               // small response cache for Core reads
-	absent    sync.Map               // contract routes an app answered 404/405 on, and when
+
+	capableMu   sync.Mutex
+	capableSeen map[string]any // who offers a capability to a person (scope + email), for capableTTL
 }
 
 // New creates a server.
@@ -57,7 +59,7 @@ func New(cfg *config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) *Se
 	return &Server{cfg: cfg, store: st, log: log, webFS: webFS, started: time.Now(),
 		core:      core.New(cfg.CoreURL, core.Options{DB: st.DB, TokenFile: cfg.DataDir + "/core.token", UserAgent: "pocket-hub/" + Version}),
 		oidc:      &oidcProvider{issuerURL: cfg.OIDCIssuer},
-		refreshes: map[string]*sync.Mutex{}}
+		refreshes: map[string]*sync.Mutex{}, capableSeen: map[string]any{}}
 }
 
 // Bootstrap seeds the first admin (if configured) and starts the Core registration loop.
@@ -219,8 +221,14 @@ func (s *Server) manifest() core.Manifest {
 	if s.cfg.BaseURL != "" {
 		m.OIDC = &core.OIDCRequest{RedirectURIs: []string{s.cfg.BaseURL + "/api/v1/auth/oidc/callback"}}
 	}
+	// One rule per capability instead of a link per app: Core keeps a link to
+	// every app that offers it, new apps included, under one switch.
+	m.Uses = []core.Use{
+		core.UseEvery(core.ScopeWidget, "Show a few lines from each of your apps on your home screen and on Today"),
+		core.UseEvery(core.ScopeCapture, "Keep a quick line you type in Pocket Hub in the app you choose"),
+	}
 	s.coreMu.Lock()
-	m.Uses = append([]core.Use(nil), s.uses...)
+	m.Uses = append(m.Uses, s.uses...)
 	s.coreMu.Unlock()
 	return m
 }
